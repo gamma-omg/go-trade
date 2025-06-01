@@ -31,10 +31,10 @@ func (m *mockMarket) GetQuantity(size decimal.Decimal, symbol string) (decimal.D
 }
 
 type mockPositionScaler struct {
-	scaleFunc func(budget decimal.Decimal, confidence float32) decimal.Decimal
+	scaleFunc func(budget decimal.Decimal, confidence float64) decimal.Decimal
 }
 
-func (s *mockPositionScaler) GetSize(budget decimal.Decimal, confidence float32) decimal.Decimal {
+func (s *mockPositionScaler) GetSize(budget decimal.Decimal, confidence float64) decimal.Decimal {
 	return s.scaleFunc(budget, confidence)
 }
 
@@ -58,7 +58,7 @@ func (pm *mockPositionManager) Close(pos *market.Position) error {
 
 type mockIndicator struct {
 	act        indicator.Action
-	confidence float32
+	confidence float64
 }
 
 func (m *mockIndicator) GetSignal() (indicator.Signal, error) {
@@ -76,7 +76,7 @@ func Test_Run(t *testing.T) {
 	}
 	tbl := []struct {
 		act         indicator.Action
-		confidence  float32
+		confidence  float64
 		position    *market.Position
 		initialPos  int
 		expectedPos int
@@ -105,7 +105,7 @@ func Test_Run(t *testing.T) {
 				},
 			}
 			scaler := mockPositionScaler{
-				scaleFunc: func(budget decimal.Decimal, confidence float32) decimal.Decimal {
+				scaleFunc: func(budget decimal.Decimal, confidence float64) decimal.Decimal {
 					return budget
 				},
 			}
@@ -137,7 +137,7 @@ func Test_buy(t *testing.T) {
 		},
 	}
 	scaler := &mockPositionScaler{
-		scaleFunc: func(budget decimal.Decimal, confidence float32) decimal.Decimal {
+		scaleFunc: func(budget decimal.Decimal, confidence float64) decimal.Decimal {
 			return budget.Mul(decimal.NewFromFloat(float64(confidence)))
 		},
 	}

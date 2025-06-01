@@ -10,5 +10,5 @@ const (
 
 type Signal struct {
 	Act        Action
-	Confidence float32
+	Confidence float64
 }

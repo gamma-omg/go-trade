@@ -20,7 +20,7 @@ type positionManager interface {
 }
 
 type positionScaler interface {
-	GetSize(budget decimal.Decimal, confidence float32) decimal.Decimal
+	GetSize(budget decimal.Decimal, confidence float64) decimal.Decimal
 }
 
 type marketProvider interface {
@@ -70,7 +70,7 @@ func (ts *TradingStrategy) Run() error {
 	return nil
 }
 
-func (ts *TradingStrategy) buy(confidence float32) error {
+func (ts *TradingStrategy) buy(confidence float64) error {
 	funds := ts.getAvailableFunds()
 	size := ts.posScaler.GetSize(funds, confidence)
 	qty, err := ts.market.GetQuantity(size, ts.symbol)
@@ -87,7 +87,7 @@ func (ts *TradingStrategy) buy(confidence float32) error {
 	return nil
 }
 
-func (ts *TradingStrategy) sell(_ float32) error {
+func (ts *TradingStrategy) sell(_ float64) error {
 	if ts.position == nil {
 		return nil
 	}
