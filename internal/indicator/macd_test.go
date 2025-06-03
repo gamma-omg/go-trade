@@ -35,7 +35,7 @@ func (m *mockBarsProvider) HasBars(count int) bool {
 	return len(m.closePrices) >= count
 }
 
-func Test_GetSignal(t *testing.T) {
+func TestMACD_GetSignal(t *testing.T) {
 	tbl := []struct {
 		prices        []float64
 		fast          int
@@ -148,7 +148,7 @@ func Test_GetSignal(t *testing.T) {
 	}
 }
 
-func Test_calcMACD(t *testing.T) {
+func TestMACD_calcMACD(t *testing.T) {
 	tbl := []struct {
 		prices  []float64
 		fast    int
@@ -227,7 +227,7 @@ func Test_calcMACD(t *testing.T) {
 	}
 }
 
-func Test_hasCrossOver(t *testing.T) {
+func TestMACD_hasCrossOver(t *testing.T) {
 	tbl := []struct {
 		data      []float64
 		lookback  int

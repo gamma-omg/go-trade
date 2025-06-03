@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_ema(t *testing.T) {
+func TestEma(t *testing.T) {
 	tbl := []struct {
 		data    []float64
 		ema     []float64

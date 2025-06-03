@@ -68,7 +68,7 @@ func (m *mockIndicator) GetSignal() (indicator.Signal, error) {
 	}, nil
 }
 
-func Test_Run(t *testing.T) {
+func TestRun(t *testing.T) {
 	cfg := config.Strategy{
 		Budget:         1000,
 		BuyConfidence:  0.5,
@@ -130,7 +130,7 @@ func Test_Run(t *testing.T) {
 	}
 }
 
-func Test_buy(t *testing.T) {
+func TestBuy(t *testing.T) {
 	mrkt := &mockMarket{
 		qtyFunc: func(size decimal.Decimal, symbol string) (decimal.Decimal, error) {
 			return size, nil
@@ -160,7 +160,7 @@ func Test_buy(t *testing.T) {
 	assert.True(t, p.Qty.Round(0).Equal(decimal.NewFromInt(600)))
 }
 
-func Test_sell(t *testing.T) {
+func TestSell(t *testing.T) {
 	p := &market.Position{}
 	o := &market.Position{}
 	posMan := mockPositionManager{
@@ -176,7 +176,7 @@ func Test_sell(t *testing.T) {
 	assert.ElementsMatch(t, []*market.Position{o}, posMan.positions)
 }
 
-func Test_getAvailableFunds(t *testing.T) {
+func TestGetAvailableFunds(t *testing.T) {
 	tbl := []struct {
 		budget    int64
 		balance   int64

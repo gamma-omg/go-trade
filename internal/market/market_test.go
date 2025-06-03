@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Market_GetAsset(t *testing.T) {
+func TestMarketGetAsset(t *testing.T) {
 	a1 := &Asset{symbol: "a1"}
 	a2 := &Asset{symbol: "a2"}
 	m := Market{
@@ -29,7 +29,7 @@ func Test_Market_GetAsset(t *testing.T) {
 	assert.Equal(t, m.bufSize, a3.size)
 }
 
-func Test_Asset_GetBars(t *testing.T) {
+func TestAssetGetBars(t *testing.T) {
 	tbl := []struct {
 		bars  []float64
 		count int
@@ -92,7 +92,7 @@ func Test_Asset_GetBars(t *testing.T) {
 	}
 }
 
-func Test_Asset_HasBars(t *testing.T) {
+func TestAssetHasBars(t *testing.T) {
 	tbl := []struct {
 		bars  []float64
 		count int

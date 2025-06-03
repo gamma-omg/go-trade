@@ -17,7 +17,7 @@ func (m *mockTradingIndicator) GetSignal() (Signal, error) {
 	return m.signal, m.err
 }
 
-func Test_Ensemble_GetSignal(t *testing.T) {
+func TestEnsemble_GetSignal(t *testing.T) {
 	tbl := []struct {
 		children []WeightedIndicator
 		out      Signal
