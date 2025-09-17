@@ -36,9 +36,9 @@ type Asset struct {
 func newAsset(symbol string, bufSize int) *Asset {
 	return &Asset{
 		symbol: symbol,
-		bars:   make([]Bar, bufSize),
+		bars:   make([]Bar, 2*bufSize),
 		head:   0,
-		size:   bufSize,
+		size:   2 * bufSize,
 	}
 }
 
