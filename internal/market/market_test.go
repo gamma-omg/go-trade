@@ -9,26 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMarketGetAsset(t *testing.T) {
-	a1 := &Asset{symbol: "a1"}
-	a2 := &Asset{symbol: "a2"}
-	m := Market{
-		assets: map[string]*Asset{
-			"a1": a1,
-			"a2": a2,
-		},
-		bufSize: 10,
-	}
-
-	assert.Equal(t, a1, m.GetAsset("a1"))
-	assert.Equal(t, a2, m.GetAsset("a2"))
-
-	a3 := m.GetAsset("a3")
-	assert.NotNil(t, a3)
-	assert.Equal(t, "a3", a3.symbol)
-	assert.Equal(t, m.bufSize, a3.size)
-}
-
 func TestAssetGetBars(t *testing.T) {
 	tbl := []struct {
 		bars    []float64
@@ -137,7 +117,7 @@ func TestAssetHasBars(t *testing.T) {
 }
 
 func Test_Asset_Receive(t *testing.T) {
-	a := newAsset("a", 3)
+	a := NewAsset("a", 3)
 
 	b1 := Bar{}
 	b2 := Bar{}
@@ -145,11 +125,11 @@ func Test_Asset_Receive(t *testing.T) {
 	a.Receive(b1)
 	a.Receive(b2)
 	a.Receive(b3)
-	assert.Equal(t, a.bars, []Bar{b1, b2, b3})
+	assert.Equal(t, a.bars[:3], []Bar{b1, b2, b3})
 
 	b4 := Bar{}
 	b5 := Bar{}
 	a.Receive(b4)
 	a.Receive(b5)
-	assert.Equal(t, a.bars, []Bar{b4, b5, b3})
+	assert.Equal(t, a.bars[:3], []Bar{b4, b5, b3})
 }

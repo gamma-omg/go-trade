@@ -11,6 +11,13 @@ type MACDIndicator struct {
 	bars barsProvider
 }
 
+func NewMACD(cfg config.MACD, bars barsProvider) *MACDIndicator {
+	return &MACDIndicator{
+		cfg:  cfg,
+		bars: bars,
+	}
+}
+
 func (i *MACDIndicator) GetSignal() (s Signal, err error) {
 	macd, err := i.calcMACD()
 	if err != nil {

@@ -22,14 +22,6 @@ func (a *mockAccount) GetBalance() decimal.Decimal {
 	return decimal.NewFromInt(int64(a.balance))
 }
 
-type mockMarket struct {
-	qtyFunc func(size decimal.Decimal, symbol string) (decimal.Decimal, error)
-}
-
-func (m *mockMarket) GetQuantity(size decimal.Decimal, symbol string) (decimal.Decimal, error) {
-	return m.qtyFunc(size, symbol)
-}
-
 type mockPositionScaler struct {
 	scaleFunc func(budget decimal.Decimal, confidence float64) decimal.Decimal
 }
@@ -40,10 +32,11 @@ func (s *mockPositionScaler) GetSize(budget decimal.Decimal, confidence float64)
 
 type mockPositionManager struct {
 	positions []*market.Position
+	qtyFunc   func(size decimal.Decimal, symbol string) decimal.Decimal
 }
 
-func (pm *mockPositionManager) Open(symbol string, qty decimal.Decimal) (*market.Position, error) {
-	pos := &market.Position{Qty: qty}
+func (pm *mockPositionManager) Open(symbol string, size decimal.Decimal) (*market.Position, error) {
+	pos := &market.Position{Qty: pm.qtyFunc(size, symbol)}
 	pm.positions = append(pm.positions, pos)
 	return pos, nil
 }
@@ -91,7 +84,9 @@ func TestRun(t *testing.T) {
 
 	for i, c := range tbl {
 		t.Run(fmt.Sprintf("case_%d", i), func(t *testing.T) {
-			posMan := mockPositionManager{}
+			posMan := mockPositionManager{qtyFunc: func(size decimal.Decimal, symbol string) decimal.Decimal {
+				return size
+			}}
 			if c.position != nil {
 				posMan.positions = append(posMan.positions, c.position)
 			}
@@ -99,11 +94,6 @@ func TestRun(t *testing.T) {
 				posMan.positions = append(posMan.positions, &market.Position{})
 			}
 
-			mrkt := mockMarket{
-				qtyFunc: func(size decimal.Decimal, symbol string) (decimal.Decimal, error) {
-					return size, nil
-				},
-			}
 			scaler := mockPositionScaler{
 				scaleFunc: func(budget decimal.Decimal, confidence float64) decimal.Decimal {
 					return budget
@@ -115,7 +105,6 @@ func TestRun(t *testing.T) {
 				cfg:       cfg,
 				posMan:    &posMan,
 				posScaler: &scaler,
-				market:    &mrkt,
 				position:  c.position,
 				acc:       &mockAccount{balance: int(cfg.Budget)},
 				indicator: &mockIndicator{
@@ -131,20 +120,16 @@ func TestRun(t *testing.T) {
 }
 
 func TestBuy(t *testing.T) {
-	mrkt := &mockMarket{
-		qtyFunc: func(size decimal.Decimal, symbol string) (decimal.Decimal, error) {
-			return size, nil
-		},
-	}
 	scaler := &mockPositionScaler{
 		scaleFunc: func(budget decimal.Decimal, confidence float64) decimal.Decimal {
 			return budget.Mul(decimal.NewFromFloat(float64(confidence)))
 		},
 	}
-	posMan := &mockPositionManager{}
+	posMan := &mockPositionManager{qtyFunc: func(size decimal.Decimal, symbol string) decimal.Decimal {
+		return size
+	}}
 
 	s := TradingStrategy{
-		market:    mrkt,
 		posScaler: scaler,
 		posMan:    posMan,
 		acc:       &mockAccount{balance: 1000},

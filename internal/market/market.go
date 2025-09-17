@@ -4,28 +4,6 @@ import (
 	"fmt"
 )
 
-type Market struct {
-	assets  map[string]*Asset
-	bufSize int
-}
-
-func NewMarket(bufSize int) *Market {
-	return &Market{
-		assets:  make(map[string]*Asset),
-		bufSize: bufSize,
-	}
-}
-
-func (m *Market) GetAsset(symbol string) *Asset {
-	a, ok := m.assets[symbol]
-	if !ok {
-		a = newAsset(symbol, m.bufSize)
-		m.assets[symbol] = a
-	}
-
-	return a
-}
-
 type Asset struct {
 	symbol string
 	bars   []Bar
@@ -33,7 +11,7 @@ type Asset struct {
 	size   int
 }
 
-func newAsset(symbol string, bufSize int) *Asset {
+func NewAsset(symbol string, bufSize int) *Asset {
 	return &Asset{
 		symbol: symbol,
 		bars:   make([]Bar, 2*bufSize),

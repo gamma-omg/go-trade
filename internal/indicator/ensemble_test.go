@@ -145,7 +145,7 @@ func TestEnsemble_GetSignal(t *testing.T) {
 
 	for i, c := range tbl {
 		t.Run(fmt.Sprintf("case_%d", i), func(t *testing.T) {
-			i := EnsembleIndicator{children: c.children}
+			i := EnsembleIndicator{Children: c.children}
 			s, err := i.GetSignal()
 			assert.Equal(t, err, c.err)
 			assert.Equal(t, s.Act, c.out.Act)

@@ -12,13 +12,13 @@ type WeightedIndicator struct {
 }
 
 type EnsembleIndicator struct {
-	children []WeightedIndicator
+	Children []WeightedIndicator
 }
 
 func (i *EnsembleIndicator) GetSignal() (s Signal, err error) {
 	var act float64
 	var totalWeight float64
-	for _, c := range i.children {
+	for _, c := range i.Children {
 		var signal Signal
 		signal, err = c.Indicator.GetSignal()
 		if err != nil {

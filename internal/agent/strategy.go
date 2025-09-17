@@ -15,16 +15,12 @@ type tradingIndicator interface {
 }
 
 type positionManager interface {
-	Open(symbol string, qty decimal.Decimal) (*market.Position, error)
+	Open(symbol string, size decimal.Decimal) (*market.Position, error)
 	Close(position *market.Position) error
 }
 
 type positionScaler interface {
 	GetSize(budget decimal.Decimal, confidence float64) decimal.Decimal
-}
-
-type marketProvider interface {
-	GetQuantity(size decimal.Decimal, symbol string) (decimal.Decimal, error)
 }
 
 type account interface {
@@ -38,9 +34,20 @@ type TradingStrategy struct {
 	indicator tradingIndicator
 	posMan    positionManager
 	posScaler positionScaler
-	market    marketProvider
 	acc       account
 	position  *market.Position
+}
+
+func newTradingStrategy(symbol string, cfg config.Strategy, indicator tradingIndicator, log *slog.Logger) *TradingStrategy {
+	return &TradingStrategy{
+		log:       log,
+		symbol:    symbol,
+		cfg:       cfg,
+		indicator: indicator,
+		posScaler: &market.LinearScaler{MaxScale: cfg.PositionScale},
+		posMan:    nil,
+		position:  nil,
+	}
 }
 
 func (ts *TradingStrategy) Run() error {
@@ -73,12 +80,7 @@ func (ts *TradingStrategy) Run() error {
 func (ts *TradingStrategy) buy(confidence float64) error {
 	funds := ts.getAvailableFunds()
 	size := ts.posScaler.GetSize(funds, confidence)
-	qty, err := ts.market.GetQuantity(size, ts.symbol)
-	if err != nil {
-		return fmt.Errorf("failed to get position quantity: %w", err)
-	}
-
-	p, err := ts.posMan.Open(ts.symbol, qty)
+	p, err := ts.posMan.Open(ts.symbol, size)
 	if err != nil {
 		return fmt.Errorf("failed to open position: %w", err)
 	}
