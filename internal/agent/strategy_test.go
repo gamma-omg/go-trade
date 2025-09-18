@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -35,13 +36,13 @@ type mockPositionManager struct {
 	qtyFunc   func(size decimal.Decimal, symbol string) decimal.Decimal
 }
 
-func (pm *mockPositionManager) Open(symbol string, size decimal.Decimal) (*market.Position, error) {
+func (pm *mockPositionManager) Open(_ context.Context, symbol string, size decimal.Decimal) (*market.Position, error) {
 	pos := &market.Position{Qty: pm.qtyFunc(size, symbol)}
 	pm.positions = append(pm.positions, pos)
 	return pos, nil
 }
 
-func (pm *mockPositionManager) Close(pos *market.Position) error {
+func (pm *mockPositionManager) Close(_ context.Context, pos *market.Position) error {
 	pm.positions = slices.DeleteFunc(pm.positions, func(p *market.Position) bool {
 		return p == pos
 	})
@@ -113,7 +114,7 @@ func TestRun(t *testing.T) {
 				},
 			}
 
-			require.NoError(t, s.Run())
+			require.NoError(t, s.Run(context.Background()))
 			assert.Len(t, posMan.positions, c.expectedPos)
 		})
 	}
@@ -138,7 +139,7 @@ func TestBuy(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, s.buy(0.6))
+	require.NoError(t, s.buy(context.Background(), 0.6))
 	assert.Len(t, posMan.positions, 1)
 
 	p := posMan.positions[0]
@@ -156,7 +157,7 @@ func TestSell(t *testing.T) {
 		position: p,
 	}
 
-	require.NoError(t, s.sell(0.6))
+	require.NoError(t, s.sell(context.Background(), 0.6))
 
 	assert.ElementsMatch(t, []*market.Position{o}, posMan.positions)
 }

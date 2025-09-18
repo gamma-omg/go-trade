@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
@@ -15,8 +16,8 @@ type tradingIndicator interface {
 }
 
 type positionManager interface {
-	Open(symbol string, size decimal.Decimal) (*market.Position, error)
-	Close(position *market.Position) error
+	Open(ctx context.Context, symbol string, size decimal.Decimal) (*market.Position, error)
+	Close(ctx context.Context, position *market.Position) error
 }
 
 type positionScaler interface {
@@ -50,7 +51,7 @@ func newTradingStrategy(symbol string, cfg config.Strategy, indicator tradingInd
 	}
 }
 
-func (ts *TradingStrategy) Run() error {
+func (ts *TradingStrategy) Run(ctx context.Context) error {
 	s, err := ts.indicator.GetSignal()
 	if err != nil {
 		return fmt.Errorf("failed to get signal from indicator: %w", err)
@@ -63,13 +64,13 @@ func (ts *TradingStrategy) Run() error {
 	ts.log.Info("signal detected", "action", s.Act, "confidence", s.Confidence)
 
 	if s.Act == indicator.ACT_BUY && s.Confidence >= ts.cfg.BuyConfidence {
-		if err = ts.buy(s.Confidence); err != nil {
+		if err = ts.buy(ctx, s.Confidence); err != nil {
 			return fmt.Errorf("failed to process buy signal: %w", err)
 		}
 	}
 
 	if s.Act == indicator.ACT_SELL && s.Confidence >= ts.cfg.SellConfidence {
-		if err = ts.sell(s.Confidence); err != nil {
+		if err = ts.sell(ctx, s.Confidence); err != nil {
 			return fmt.Errorf("failed to process sell signal: %w", err)
 		}
 	}
@@ -77,10 +78,10 @@ func (ts *TradingStrategy) Run() error {
 	return nil
 }
 
-func (ts *TradingStrategy) buy(confidence float64) error {
+func (ts *TradingStrategy) buy(ctx context.Context, confidence float64) error {
 	funds := ts.getAvailableFunds()
 	size := ts.posScaler.GetSize(funds, confidence)
-	p, err := ts.posMan.Open(ts.symbol, size)
+	p, err := ts.posMan.Open(ctx, ts.symbol, size)
 	if err != nil {
 		return fmt.Errorf("failed to open position: %w", err)
 	}
@@ -89,12 +90,12 @@ func (ts *TradingStrategy) buy(confidence float64) error {
 	return nil
 }
 
-func (ts *TradingStrategy) sell(_ float64) error {
+func (ts *TradingStrategy) sell(ctx context.Context, _ float64) error {
 	if ts.position == nil {
 		return nil
 	}
 
-	if err := ts.posMan.Close(ts.position); err != nil {
+	if err := ts.posMan.Close(ctx, ts.position); err != nil {
 		return fmt.Errorf("failed to sell position: %w", err)
 	}
 

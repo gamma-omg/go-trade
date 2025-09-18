@@ -15,19 +15,34 @@ type barsSource interface {
 	GetBars(symbol string) <-chan market.Bar
 }
 
-type TradingAgent struct {
-	log  *slog.Logger
-	cfg  config.Config
-	bars barsSource
+type tradingStrategy interface {
+	Run(ctx context.Context) error
 }
 
-// func newTradingAgent(log *slog.Logger, cfg config.Config, bars barsSource) *TradingAgent {
-// 	return &TradingAgent{
-// 		log:  log,
-// 		cfg:  cfg,
-// 		bars: bars,
-// 	}
-// }
+type tradingStrategyFactory func(symbol string, cfg config.Strategy, asset *market.Asset) (tradingStrategy, error)
+
+type TradingAgent struct {
+	log     *slog.Logger
+	cfg     config.Config
+	bars    barsSource
+	factory tradingStrategyFactory
+}
+
+func NewTradingAgent(log *slog.Logger, cfg config.Config, bars barsSource) *TradingAgent {
+	return &TradingAgent{
+		log:  log,
+		cfg:  cfg,
+		bars: bars,
+		factory: func(symbol string, cfg config.Strategy, asset *market.Asset) (tradingStrategy, error) {
+			ind, err := createIndicator(cfg.IndRef, asset)
+			if err != nil {
+				return nil, fmt.Errorf("failed to creat trading strategy for symbol %s: %w", symbol, err)
+			}
+
+			return newTradingStrategy(symbol, cfg, ind, log), nil
+		},
+	}
+}
 
 func createIndicator(ref config.IndicatorReference, asset *market.Asset) (tradingIndicator, error) {
 	macd, ok := ref.Indicator.(config.MACD)
@@ -64,15 +79,13 @@ func (a *TradingAgent) Run(ctx context.Context) {
 			defer wg.Done()
 
 			asset := market.NewAsset(symbol, cfg.MarketBuffer)
-			ind, err := createIndicator(cfg.IndRef, asset)
+			s, err := a.factory(symbol, cfg, asset)
 			if err != nil {
 				a.log.Error("failed to run strategy for symbol", "symbol", symbol, "error", err)
 				return
 			}
 
-			s := newTradingStrategy(symbol, cfg, ind, a.log)
 			bars := a.bars.GetBars(symbol)
-
 			for {
 				select {
 				case <-ctx.Done():
@@ -83,7 +96,7 @@ func (a *TradingAgent) Run(ctx context.Context) {
 					}
 
 					asset.Receive(bar)
-					if err := s.Run(); err != nil {
+					if err := s.Run(ctx); err != nil {
 						a.log.Error(err.Error(), "symbol", symbol)
 					}
 				}
