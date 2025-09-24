@@ -30,7 +30,7 @@ func (m *mockTradingStrategy) Run(ctx context.Context) error {
 	return nil
 }
 
-func Test_createIndicator_MACD(t *testing.T) {
+func TestCreateIndicator_MACD(t *testing.T) {
 	ind, err := createIndicator(config.IndicatorReference{
 		Indicator: config.MACD{
 			Fast:          10,
@@ -48,7 +48,7 @@ func Test_createIndicator_MACD(t *testing.T) {
 	assert.IsType(t, &indicator.MACDIndicator{}, ind)
 }
 
-func Test_createIndicator_Ensemble(t *testing.T) {
+func TestCreateIndicator_Ensemble(t *testing.T) {
 	ind, err := createIndicator(config.IndicatorReference{
 		Indicator: config.Ensemble{
 			Indicators: []struct {
@@ -82,7 +82,7 @@ func Test_createIndicator_Ensemble(t *testing.T) {
 	assert.IsType(t, &indicator.MACDIndicator{}, e.Children[1].Indicator)
 }
 
-func Test_createIndicator_InvalidType(t *testing.T) {
+func TestCreateIndicator_InvalidType(t *testing.T) {
 	ind, err := createIndicator(config.IndicatorReference{
 		Indicator: "invalid",
 	}, market.NewAsset("BTC", 1))
@@ -91,7 +91,7 @@ func Test_createIndicator_InvalidType(t *testing.T) {
 	assert.Nil(t, ind)
 }
 
-func Test_createIndicator_EmptyEnsemble(t *testing.T) {
+func TestCreateIndicator_EmptyEnsemble(t *testing.T) {
 	ind, err := createIndicator(config.IndicatorReference{
 		Indicator: config.Ensemble{},
 	}, market.NewAsset("BTC", 1))
@@ -103,7 +103,7 @@ func Test_createIndicator_EmptyEnsemble(t *testing.T) {
 	assert.Equal(t, 0, len(e.Children))
 }
 
-func Test_Run(t *testing.T) {
+func TestAgentRun(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 

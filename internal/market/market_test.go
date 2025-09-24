@@ -116,7 +116,7 @@ func TestAssetHasBars(t *testing.T) {
 	}
 }
 
-func Test_Asset_Receive(t *testing.T) {
+func TestAssetReceive(t *testing.T) {
 	a := NewAsset("a", 3)
 
 	b1 := Bar{}

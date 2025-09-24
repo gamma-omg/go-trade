@@ -62,7 +62,7 @@ func (m *mockIndicator) GetSignal() (indicator.Signal, error) {
 	}, nil
 }
 
-func TestRun(t *testing.T) {
+func TestStrategyRun(t *testing.T) {
 	cfg := config.Strategy{
 		Budget:         1000,
 		BuyConfidence:  0.5,

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_ConstScaler(t *testing.T) {
+func TestConstScaler(t *testing.T) {
 	tbl := []struct {
 		budget     float64
 		size       float64
@@ -29,7 +29,7 @@ func Test_ConstScaler(t *testing.T) {
 	}
 }
 
-func Test_LinearScaler(t *testing.T) {
+func TestLinearScaler(t *testing.T) {
 	tbl := []struct {
 		budget     float64
 		scale      float64
