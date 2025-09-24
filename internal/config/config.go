@@ -3,22 +3,54 @@ package config
 import (
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	Strategies map[string]Strategy `yaml:"strategies"`
+	Strategies  map[string]Strategy `yaml:"strategies"`
+	PlatformRef PlatformReference   `yaml:"platform"`
+}
+
+func Read(r io.Reader) (*Config, error) {
+	var cfg Config
+	d := yaml.NewDecoder(r)
+	err := d.Decode(&cfg)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse config file: %w", err)
+	}
+
+	return &cfg, nil
+}
+
+func ReadFromFile(path string) (*Config, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read config file: %w", err)
+	}
+
+	return Read(f)
 }
 
 type Strategy struct {
-	Budget         int64   `yaml:"budget"`
-	BuyConfidence  float64 `yaml:"buy_threshold"`
-	SellConfidence float64 `yaml:"sell_threshold"`
-	PositionScale  float64 `yaml:"position_scale"`
-	MarketBuffer   int     `yaml:"market_buffer"`
-	IndRef         IndicatorReference
+	Budget         int64              `yaml:"budget"`
+	BuyConfidence  float64            `yaml:"buy_confidence"`
+	SellConfidence float64            `yaml:"sell_confidence"`
+	PositionScale  float64            `yaml:"position_scale"`
+	MarketBuffer   int                `yaml:"market_buffer"`
+	IndRef         IndicatorReference `yaml:"indicator"`
 }
+
+type PlatformReference struct {
+	Platform Platform
+}
+
+type Platform interface{}
+
+// indicator configs
 
 type MACD struct {
 	Fast          int     `yaml:"fast"`
@@ -44,7 +76,7 @@ type IndicatorReference struct {
 	Indicator Indicator
 }
 
-func (w *IndicatorReference) UnmarshallYAML(value *yaml.Node) error {
+func (w *IndicatorReference) UnmarshalYAML(value *yaml.Node) error {
 	if len(value.Content) == 0 {
 		return nil
 	}
@@ -69,6 +101,40 @@ func (w *IndicatorReference) UnmarshallYAML(value *yaml.Node) error {
 		w.Indicator = ensemble
 	default:
 		return fmt.Errorf("unknown indicator type: %s", key)
+	}
+
+	return nil
+}
+
+// platform configs
+
+type Emulator struct {
+	Data          map[string]string `yaml:"data"`
+	Start         time.Time         `yaml:"start"`
+	End           time.Time         `yaml:"end"`
+	BuyComission  float64           `yaml:"buy_comission"`
+	SellComission float64           `yaml:"sell_comission"`
+}
+
+func (w *PlatformReference) UnmarshalYAML(value *yaml.Node) error {
+	if len(value.Content) == 0 {
+		return nil
+	}
+
+	if value.Kind != yaml.MappingNode || len(value.Content) != 2 {
+		return errors.New("invalid platform yaml format")
+	}
+
+	key := value.Content[0].Value
+	switch key {
+	case "emulator":
+		var emu Emulator
+		if err := value.Content[1].Decode(&emu); err != nil {
+			return fmt.Errorf("failed parsing emulator platform config: %w", err)
+		}
+		w.Platform = emu
+	default:
+		return fmt.Errorf("unknown platform type: %s", key)
 	}
 
 	return nil
