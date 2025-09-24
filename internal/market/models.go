@@ -16,6 +16,8 @@ type Bar struct {
 }
 
 type Position struct {
+	Symbol     string
 	EntryPrice decimal.Decimal
 	Qty        decimal.Decimal
+	OpenTime   time.Time
 }

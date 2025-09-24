@@ -12,7 +12,7 @@ import (
 )
 
 type barsSource interface {
-	GetBars(symbol string) <-chan market.Bar
+	GetBars(symbol string) (<-chan market.Bar, error)
 }
 
 type tradingStrategy interface {
@@ -85,7 +85,12 @@ func (a *TradingAgent) Run(ctx context.Context) {
 				return
 			}
 
-			bars := a.bars.GetBars(symbol)
+			bars, err := a.bars.GetBars(symbol)
+			if err != nil {
+				a.log.Error("failed to get bars data for symbol", "symbol", symbol, "error", err)
+				return
+			}
+
 			for {
 				select {
 				case <-ctx.Done():

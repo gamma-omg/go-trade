@@ -17,8 +17,8 @@ type mockBarsSource struct {
 	bars chan market.Bar
 }
 
-func (m *mockBarsSource) GetBars(symbol string) <-chan market.Bar {
-	return m.bars
+func (m *mockBarsSource) GetBars(symbol string) (<-chan market.Bar, error) {
+	return m.bars, nil
 }
 
 type mockTradingStrategy struct {
