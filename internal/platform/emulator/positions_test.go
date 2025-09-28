@@ -119,7 +119,6 @@ func TestClose(t *testing.T) {
 	assert.True(t, decimal.NewFromFloat(100).Equal(d.BuyPrice))
 	assert.True(t, decimal.NewFromFloat(120).Equal(d.SellPrice))
 	assert.True(t, decimal.NewFromFloat(20).Equal(d.Gain))
-	assert.InDelta(t, 1.2, d.GainPct, 0.00001)
 }
 
 func TestClose_failureScenarious(t *testing.T) {

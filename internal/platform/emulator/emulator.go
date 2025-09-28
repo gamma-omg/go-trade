@@ -13,12 +13,17 @@ import (
 type TradingEmulator struct {
 	readers map[string]*barReader
 	bars    map[string]chan market.Bar
+	posMan  positionManager
 }
 
 func NewTradingEmulator(cfg config.Emulator) (*TradingEmulator, error) {
+	prices := newDefaultPriceProvider()
+	comission := newFixedRateComission(cfg.BuyComission, cfg.SellComission)
+	report := newJsonReportBuilder()
 	emu := &TradingEmulator{
 		readers: make(map[string]*barReader),
 		bars:    make(map[string]chan market.Bar),
+		posMan:  *newPositionManager(comission, prices, report),
 	}
 
 	for symbol, path := range cfg.Data {
@@ -51,14 +56,13 @@ func (e *TradingEmulator) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
 	for symbol, rdr := range e.readers {
 		wg.Add(1)
-		src := rdr.Read(ctx)
 		dst := e.bars[symbol]
 
-		go func(src <-chan barReadResult, dst chan<- market.Bar) {
+		go func(rdr *barReader, dst chan<- market.Bar) {
 			defer wg.Done()
 			defer close(dst)
 
-			for b := range src {
+			for b := range rdr.Read(ctx) {
 				if b.err != nil {
 					errCh <- b.err
 					break
@@ -67,7 +71,7 @@ func (e *TradingEmulator) Run(ctx context.Context) error {
 				dst <- b.bar
 				// todo: process bar
 			}
-		}(src, dst)
+		}(rdr, dst)
 	}
 
 	go func() {

@@ -29,8 +29,9 @@ type Deal struct {
 	SellTime  time.Time
 	BuyPrice  decimal.Decimal
 	SellPrice decimal.Decimal
+	Qty       decimal.Decimal
+	Spend     decimal.Decimal
 	Gain      decimal.Decimal
-	GainPct   float64
 }
 
 type positionManager struct {
@@ -65,12 +66,14 @@ func (pm *positionManager) Open(ctx context.Context, symbol string, size decimal
 		return
 	}
 
+	price := size
 	size = pm.comission.ApplyOnBuy(size)
 	p = market.Position{
 		Symbol:     symbol,
 		EntryPrice: bar.Close,
 		OpenTime:   bar.Time,
 		Qty:        size.Div(bar.Close),
+		Price:      price,
 	}
 	pm.positions[symbol] = p
 	return p, nil
@@ -94,15 +97,15 @@ func (pm *positionManager) Close(ctx context.Context, symbol string) error {
 
 	before := p.Qty.Mul(p.EntryPrice)
 	after := pm.comission.ApplyOnSell(bar.Close)
-	pct, _ := after.Div(before).Float64()
 	d := Deal{
 		Symbol:    symbol,
 		SellTime:  bar.Time,
 		SellPrice: bar.Close,
 		BuyTime:   p.OpenTime,
 		BuyPrice:  p.EntryPrice,
+		Qty:       p.Qty,
+		Spend:     p.Price,
 		Gain:      after.Sub(before),
-		GainPct:   pct,
 	}
 	pm.report.SubmitDeal(d)
 	return nil

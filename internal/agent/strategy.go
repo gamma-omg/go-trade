@@ -39,14 +39,14 @@ type TradingStrategy struct {
 	position  *market.Position
 }
 
-func newTradingStrategy(symbol string, cfg config.Strategy, indicator tradingIndicator, log *slog.Logger) *TradingStrategy {
+func newTradingStrategy(symbol string, cfg config.Strategy, indicator tradingIndicator, positionManager positionManager, log *slog.Logger) *TradingStrategy {
 	return &TradingStrategy{
 		log:       log,
 		symbol:    symbol,
 		cfg:       cfg,
 		indicator: indicator,
 		posScaler: &market.LinearScaler{MaxScale: cfg.PositionScale},
-		posMan:    nil,
+		posMan:    positionManager,
 		position:  nil,
 	}
 }
