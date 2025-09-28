@@ -1,6 +1,7 @@
 package emulator
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -11,11 +12,13 @@ import (
 
 type TradingEmulator struct {
 	readers map[string]*barReader
+	bars    map[string]chan market.Bar
 }
 
 func NewTradingEmulator(cfg config.Emulator) (*TradingEmulator, error) {
 	emu := &TradingEmulator{
 		readers: make(map[string]*barReader),
+		bars:    make(map[string]chan market.Bar),
 	}
 
 	for symbol, path := range cfg.Data {
@@ -26,6 +29,7 @@ func NewTradingEmulator(cfg config.Emulator) (*TradingEmulator, error) {
 			return nil, fmt.Errorf("failed to create bars reader: %w", err)
 		}
 
+		emu.bars[symbol] = make(chan market.Bar)
 		emu.readers[symbol] = rdr
 	}
 
@@ -33,28 +37,37 @@ func NewTradingEmulator(cfg config.Emulator) (*TradingEmulator, error) {
 }
 
 func (e *TradingEmulator) GetBars(symbol string) (<-chan market.Bar, error) {
-	rdr, ok := e.readers[symbol]
+	bars, ok := e.bars[symbol]
 	if !ok {
 		return nil, fmt.Errorf("unknown symbol: %s", symbol)
 	}
 
-	return rdr.bars, nil
+	return bars, nil
 }
 
-func (e *TradingEmulator) Run() error {
+func (e *TradingEmulator) Run(ctx context.Context) error {
 	errCh := make(chan error, len(e.readers))
 
 	var wg sync.WaitGroup
-	for _, rdr := range e.readers {
+	for symbol, rdr := range e.readers {
 		wg.Add(1)
-		go func(rdr *barReader) {
+		src := rdr.Read(ctx)
+		dst := e.bars[symbol]
+
+		go func(src <-chan barReadResult, dst chan<- market.Bar) {
 			defer wg.Done()
+			defer close(dst)
 
-			if err := rdr.Read(); err != nil {
-				errCh <- err
+			for b := range src {
+				if b.err != nil {
+					errCh <- b.err
+					break
+				}
+
+				dst <- b.bar
+				// todo: process bar
 			}
-
-		}(rdr)
+		}(src, dst)
 	}
 
 	go func() {
