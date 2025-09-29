@@ -39,7 +39,11 @@ func newJsonReportBuilder() *jsonReportBuilder {
 }
 
 func (r *jsonReportBuilder) SubmitDeal(d Deal) {
-	pct, _ := d.Gain.Div(d.Spend).Float64()
+	pct := 0.0
+	if !d.Spend.IsZero() {
+		pct, _ = d.Gain.Div(d.Spend).Float64()
+	}
+
 	deals := r.report.Deals[d.Symbol]
 	deals = append(deals, JsonDeal{
 		BuyTime:  d.BuyTime,
@@ -53,13 +57,14 @@ func (r *jsonReportBuilder) SubmitDeal(d Deal) {
 	r.spent = r.spent.Add(d.Spend)
 	r.gained = r.gained.Add(d.Gain)
 
+	r.report.TotalSpend = r.spent.String()
+	r.report.TotalGain = r.gained.String()
+
 	if r.spent.IsZero() {
 		return
 	}
 
 	pct, _ = r.gained.Div(r.spent).Float64()
-	r.report.TotalSpend = r.spent.String()
-	r.report.TotalGain = r.gained.String()
 	r.report.TotalGainPct = pct
 }
 

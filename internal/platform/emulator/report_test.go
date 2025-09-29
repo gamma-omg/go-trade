@@ -45,3 +45,38 @@ func TestWrite(t *testing.T) {
 	}
 }`, buff.String())
 }
+
+func TestWrite_emptyReport(t *testing.T) {
+	r := newJsonReportBuilder()
+
+	var buff bytes.Buffer
+	err := r.Write(&buff)
+	require.NoError(t, err)
+
+	assert.JSONEq(t, "{}", buff.String())
+}
+
+func TestSubmitDeal_divideByZero(t *testing.T) {
+	r := newJsonReportBuilder()
+	r.SubmitDeal(Deal{
+		Symbol: "BTC",
+		Gain:   decimal.NewFromInt(100),
+		Spend:  decimal.NewFromInt(0),
+	})
+
+	var buff bytes.Buffer
+	err := r.Write(&buff)
+	require.NoError(t, err)
+
+	assert.JSONEq(t, `
+{
+	"total_spend": "0",
+	"total_gain": "100",
+	"deals": {
+		"BTC": [{
+			"spend": "0",
+			"gain": "100"
+		}]
+	}
+}`, buff.String())
+}
