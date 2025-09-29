@@ -19,6 +19,9 @@ type mockPriceProvider struct {
 }
 
 func (pp *mockPriceProvider) GetLastBar(symbol string) (bar market.Bar, err error) {
+	pp.mu.Lock()
+	defer pp.mu.Unlock()
+
 	bar, ok := pp.price[symbol]
 	if !ok {
 		err = fmt.Errorf("unknown symbol %s", symbol)
