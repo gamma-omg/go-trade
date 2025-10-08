@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gamma-omg/trading-bot/internal/config"
+	"github.com/gamma-omg/trading-bot/internal/market"
 )
 
 type MACDIndicator struct {
@@ -19,13 +20,24 @@ func NewMACD(cfg config.MACD, bars barsProvider) *MACDIndicator {
 }
 
 func (i *MACDIndicator) GetSignal() (s Signal, err error) {
-	macd, err := i.calcMACD()
-	if err != nil {
-		err = fmt.Errorf("failed to calculate macd: %w", err)
+	s = Signal{
+		Act:        ACT_HOLD,
+		Confidence: 1.0,
 	}
 
-	n := len(macd)
-	last := macd[n-1]
+	count := max(i.cfg.Fast, i.cfg.Slow, i.cfg.Signal)
+	if !i.bars.HasBars(count) {
+		return
+	}
+
+	bars, err := i.bars.GetBars(count)
+	if err != nil {
+		err = fmt.Errorf("failed to get data for macd indicator: %w", err)
+		return
+	}
+
+	macd := calcMACD(bars, i.cfg.Fast, i.cfg.Slow, i.cfg.Signal)
+	last := macd[count-1]
 
 	if last > i.cfg.BuyThreshold && hasCrossOver(macd, i.cfg.CrossLookback) {
 		s = Signal{
@@ -43,45 +55,30 @@ func (i *MACDIndicator) GetSignal() (s Signal, err error) {
 		return
 	}
 
-	s = Signal{
-		Act:        ACT_HOLD,
-		Confidence: 1.0,
-	}
 	return
 }
 
-func (i *MACDIndicator) calcMACD() (macd []float64, err error) {
-	count := max(i.cfg.Fast, i.cfg.Slow, i.cfg.Signal)
-	if !i.bars.HasBars(count) {
-		err = fmt.Errorf("insufficient data: requires at least %d bars", count)
-		return
-	}
-
-	bars, err := i.bars.GetBars(count)
-	if err != nil {
-		err = fmt.Errorf("failed to get bars data: %w", err)
-		return
-	}
-
-	prices := make([]float64, count)
+func calcMACD(bars []market.Bar, fast, slow, signal int) []float64 {
+	n := len(bars)
+	prices := make([]float64, n)
 	for i, b := range bars {
 		prices[i], _ = b.Close.Float64()
 	}
 
-	fast := ema(prices, i.cfg.Fast)
-	slow := ema(prices, i.cfg.Slow)
-	diff := make([]float64, count)
-	for i := range count {
-		diff[i] = fast[i] - slow[i]
+	fastEma := ema(prices, fast)
+	slowEma := ema(prices, slow)
+	diff := make([]float64, n)
+	for i := range n {
+		diff[i] = fastEma[i] - slowEma[i]
 	}
 
-	signal := ema(diff, i.cfg.Signal)
-	macd = make([]float64, count)
-	for i := 0; i < count; i++ {
-		macd[i] = diff[i] - signal[i]
+	signalEma := ema(diff, signal)
+	macd := make([]float64, n)
+	for i := 0; i < n; i++ {
+		macd[i] = diff[i] - signalEma[i]
 	}
 
-	return
+	return macd
 }
 
 func hasCrossOver(macd []float64, lookback int) bool {

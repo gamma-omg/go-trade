@@ -114,6 +114,8 @@ type Emulator struct {
 	End           time.Time         `yaml:"end"`
 	BuyComission  float64           `yaml:"buy_comission"`
 	SellComission float64           `yaml:"sell_comission"`
+	Balance       float64           `yaml:"balance"`
+	Report        string            `yaml:"report"`
 }
 
 func (w *PlatformReference) UnmarshalYAML(value *yaml.Node) error {

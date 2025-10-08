@@ -4,19 +4,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
+	"os"
+	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
 )
 
 type jsonReportBuilder struct {
+	log    *slog.Logger
 	report JsonReport
 	spent  decimal.Decimal
 	gained decimal.Decimal
+	mu     sync.Mutex
 }
 
 type JsonReport struct {
-	TotalSpend   string                `json:"total_spend,omitempty"`
 	TotalGain    string                `json:"total_gain,omitempty"`
 	TotalGainPct float64               `json:"total_gain_pct,omitempty"`
 	Deals        map[string][]JsonDeal `json:"deals,omitempty"`
@@ -30,8 +34,9 @@ type JsonDeal struct {
 	GainPct  float64   `json:"gain_pct,omitempty"`
 }
 
-func newJsonReportBuilder() *jsonReportBuilder {
+func newJsonReportBuilder(log *slog.Logger) *jsonReportBuilder {
 	return &jsonReportBuilder{
+		log: log,
 		report: JsonReport{
 			Deals: map[string][]JsonDeal{},
 		},
@@ -39,6 +44,9 @@ func newJsonReportBuilder() *jsonReportBuilder {
 }
 
 func (r *jsonReportBuilder) SubmitDeal(d Deal) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	pct := 0.0
 	if !d.Spend.IsZero() {
 		pct, _ = d.Gain.Div(d.Spend).Float64()
@@ -57,7 +65,6 @@ func (r *jsonReportBuilder) SubmitDeal(d Deal) {
 	r.spent = r.spent.Add(d.Spend)
 	r.gained = r.gained.Add(d.Gain)
 
-	r.report.TotalSpend = r.spent.String()
 	r.report.TotalGain = r.gained.String()
 
 	if r.spent.IsZero() {
@@ -66,13 +73,32 @@ func (r *jsonReportBuilder) SubmitDeal(d Deal) {
 
 	pct, _ = r.gained.Div(r.spent).Float64()
 	r.report.TotalGainPct = pct
+
+	r.log.Info("deal closed", slog.String("symbol", d.Symbol), slog.Float64("gain_pct", pct), slog.Time("time", d.SellTime))
 }
 
 func (r *jsonReportBuilder) Write(w io.Writer) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	e := json.NewEncoder(w)
 	if err := e.Encode(r.report); err != nil {
 		return fmt.Errorf("failed to write trading report: %w", err)
 	}
 
 	return nil
+}
+
+func (r *jsonReportBuilder) WriteToFile(path string) (err error) {
+	f, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("failed to write report: %w", err)
+	}
+	defer func() {
+		if cerr := f.Close(); err != nil {
+			err = cerr
+		}
+	}()
+
+	return r.Write(f)
 }

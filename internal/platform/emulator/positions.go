@@ -3,6 +3,7 @@ package emulator
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -23,6 +24,11 @@ type reportBuilder interface {
 	SubmitDeal(d Deal)
 }
 
+type account interface {
+	Deposit(amount decimal.Decimal) error
+	Withdraw(amount decimal.Decimal) error
+}
+
 type Deal struct {
 	Symbol    string
 	BuyTime   time.Time
@@ -35,18 +41,22 @@ type Deal struct {
 }
 
 type positionManager struct {
+	log       *slog.Logger
 	positions map[string]market.Position
 	report    reportBuilder
 	prices    priceProvider
 	comission comissionCharger
+	acc       account
 	mu        sync.Mutex
 }
 
-func newPositionManager(comission comissionCharger, prices priceProvider, report reportBuilder) *positionManager {
+func newPositionManager(log *slog.Logger, comission comissionCharger, prices priceProvider, report reportBuilder, acc account) *positionManager {
 	return &positionManager{
+		log:       log,
 		comission: comission,
 		prices:    prices,
 		report:    report,
+		acc:       acc,
 		positions: make(map[string]market.Position),
 	}
 }
@@ -66,6 +76,11 @@ func (pm *positionManager) Open(ctx context.Context, symbol string, size decimal
 		return
 	}
 
+	if err = pm.acc.Withdraw(size); err != nil {
+		err = fmt.Errorf("failed to withdraw funds: %w", err)
+		return
+	}
+
 	price := size
 	size = pm.comission.ApplyOnBuy(size)
 	p = market.Position{
@@ -76,6 +91,7 @@ func (pm *positionManager) Open(ctx context.Context, symbol string, size decimal
 		Price:      price,
 	}
 	pm.positions[symbol] = p
+
 	return p, nil
 }
 
@@ -93,10 +109,14 @@ func (pm *positionManager) Close(ctx context.Context, symbol string) error {
 		return fmt.Errorf("cannot find sell price for %s: %w", symbol, err)
 	}
 
-	delete(pm.positions, symbol)
-
 	before := p.Qty.Mul(p.EntryPrice)
 	after := pm.comission.ApplyOnSell(bar.Close)
+	if err = pm.acc.Deposit(after); err != nil {
+		return fmt.Errorf("failed to deposit funds: %w", err)
+	}
+
+	delete(pm.positions, symbol)
+
 	d := Deal{
 		Symbol:    symbol,
 		SellTime:  bar.Time,
@@ -108,5 +128,6 @@ func (pm *positionManager) Close(ctx context.Context, symbol string) error {
 		Gain:      after.Sub(before),
 	}
 	pm.report.SubmitDeal(d)
+
 	return nil
 }

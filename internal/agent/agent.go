@@ -28,7 +28,7 @@ type TradingAgent struct {
 	factory tradingStrategyFactory
 }
 
-func NewTradingAgent(log *slog.Logger, cfg config.Config, bars barsSource, posMan positionManager) *TradingAgent {
+func NewTradingAgent(log *slog.Logger, cfg config.Config, bars barsSource, posMan positionManager, acc account) *TradingAgent {
 	return &TradingAgent{
 		log:  log,
 		cfg:  cfg,
@@ -39,7 +39,7 @@ func NewTradingAgent(log *slog.Logger, cfg config.Config, bars barsSource, posMa
 				return nil, fmt.Errorf("failed to creat trading strategy for symbol %s: %w", symbol, err)
 			}
 
-			return newTradingStrategy(symbol, cfg, ind, posMan, log), nil
+			return newTradingStrategy(symbol, cfg, ind, posMan, acc, log), nil
 		},
 	}
 }
@@ -72,6 +72,8 @@ func createIndicator(ref config.IndicatorReference, asset *market.Asset) (tradin
 }
 
 func (a *TradingAgent) Run(ctx context.Context) {
+	a.log.Info("starting agent")
+
 	var wg sync.WaitGroup
 	for symbol, cfg := range a.cfg.Strategies {
 		wg.Add(1)

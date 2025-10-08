@@ -2,6 +2,8 @@ package emulator
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -23,7 +25,8 @@ func TestRun(t *testing.T) {
 1758127500.0,115510,115510,115482,115493,1.05828858
 1758152940.0,116570,116577,116569,116574,1.60268598`)
 
-	emu, err := NewTradingEmulator(config.Emulator{
+	l := slog.New(slog.NewTextHandler(io.Discard, nil))
+	emu, err := NewTradingEmulator(l, config.Emulator{
 		Data: map[string]string{
 			"BTC": f,
 		},

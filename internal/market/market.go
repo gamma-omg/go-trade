@@ -26,7 +26,7 @@ func (a *Asset) GetBars(count int) ([]Bar, error) {
 		return nil, fmt.Errorf("insufficient data")
 	}
 
-	return a.bars[n-count+1:], nil
+	return a.bars[n-count+1 : n+1], nil
 }
 
 func (a *Asset) HasBars(count int) bool {

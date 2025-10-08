@@ -204,18 +204,12 @@ func TestMACD_calcMACD(t *testing.T) {
 
 	for i, c := range tbl {
 		t.Run(fmt.Sprintf("case_%d", i), func(t *testing.T) {
-			ind := MACDIndicator{
-				cfg: config.MACD{
-					Fast:   c.fast,
-					Slow:   c.slow,
-					Signal: c.signal,
-				},
-				bars: &mockBarsProvider{closePrices: c.prices},
-			}
-
 			count := max(c.fast, c.slow, c.signal)
-			macd, err := ind.calcMACD()
+			barsProvider := mockBarsProvider{c.prices}
+			bars, err := barsProvider.GetBars(count)
 			require.NoError(t, err)
+
+			macd := calcMACD(bars, c.fast, c.slow, c.signal)
 			require.Len(t, macd, count)
 
 			for j, v := range macd {
@@ -248,4 +242,21 @@ func TestMACD_hasCrossOver(t *testing.T) {
 			assert.Equal(t, c.crossover, hasCrossOver(c.data, c.lookback))
 		})
 	}
+}
+
+func TestMACD_holdWhenNotEnoughData(t *testing.T) {
+	barsProvider := mockBarsProvider{closePrices: []float64{1, 2, 3, 4}}
+	ind := MACDIndicator{
+		cfg: config.MACD{
+			Fast:   8,
+			Slow:   12,
+			Signal: 10,
+		},
+		bars: &barsProvider,
+	}
+
+	s, err := ind.GetSignal()
+	require.NoError(t, err)
+
+	assert.Equal(t, Signal{ACT_HOLD, 1.0}, s)
 }

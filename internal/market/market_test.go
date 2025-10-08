@@ -11,46 +11,53 @@ import (
 
 func TestAssetGetBars(t *testing.T) {
 	tbl := []struct {
-		bars    []float64
-		bufSize int
-		count   int
-		out     []float64
-		err     bool
+		bars  []float64
+		head  int
+		count int
+		out   []float64
+		err   bool
 	}{
 		{
-			bars:    []float64{1, 2, 3, 4, 5, 6},
-			bufSize: 6,
-			count:   1,
-			out:     []float64{6},
-			err:     false,
+			bars:  []float64{1, 2, 3, 4, 5, 6},
+			head:  5,
+			count: 1,
+			out:   []float64{6},
+			err:   false,
 		},
 		{
-			bars:    []float64{-1, -2, -3, -4, -5, -6},
-			bufSize: 6,
-			count:   3,
-			out:     []float64{-4, -5, -6},
-			err:     false,
+			bars:  []float64{-1, -2, -3, -4, -5, -6},
+			head:  5,
+			count: 3,
+			out:   []float64{-4, -5, -6},
+			err:   false,
 		},
 		{
-			bars:    []float64{10, -10, 20, -20, 30, -30, 40, -40},
-			bufSize: 8,
-			count:   8,
-			out:     []float64{10, -10, 20, -20, 30, -30, 40, -40},
-			err:     false,
+			bars:  []float64{10, -10, 20, -20, 30, -30, 40, -40},
+			head:  7,
+			count: 8,
+			out:   []float64{10, -10, 20, -20, 30, -30, 40, -40},
+			err:   false,
 		},
 		{
-			bars:    []float64{1, 2, 3},
-			bufSize: 3,
-			count:   4,
-			out:     []float64{},
-			err:     true,
+			bars:  []float64{1, 2, 3},
+			head:  2,
+			count: 4,
+			out:   []float64{},
+			err:   true,
 		},
 		{
-			bars:    []float64{1, 2, 3, 4, 5, 6},
-			bufSize: 4,
-			count:   4,
-			out:     []float64{3, 4, 5, 6},
-			err:     false,
+			bars:  []float64{1, 2, 3, 4, 5, 6},
+			head:  5,
+			count: 4,
+			out:   []float64{3, 4, 5, 6},
+			err:   false,
+		},
+		{
+			bars:  []float64{1, 2, 3, 4, 5, 6},
+			head:  2,
+			count: 3,
+			out:   []float64{1, 2, 3},
+			err:   false,
 		},
 	}
 
@@ -69,7 +76,7 @@ func TestAssetGetBars(t *testing.T) {
 			a := Asset{
 				symbol: fmt.Sprintf("s%d", i),
 				bars:   in,
-				head:   len(in) - 1,
+				head:   c.head,
 				size:   len(in),
 			}
 

@@ -4,26 +4,38 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/gamma-omg/trading-bot/internal/config"
 	"github.com/gamma-omg/trading-bot/internal/market"
+	"github.com/shopspring/decimal"
 )
 
 type TradingEmulator struct {
+	cfg     config.Emulator
 	readers map[string]*barReader
 	bars    map[string]chan market.Bar
-	posMan  positionManager
+	prices  *defaultPriceProvider
+	report  *jsonReportBuilder
+	Acc     *defaultAccount
+	PosMan  positionManager
 }
 
-func NewTradingEmulator(cfg config.Emulator) (*TradingEmulator, error) {
+func NewTradingEmulator(log *slog.Logger, cfg config.Emulator) (*TradingEmulator, error) {
 	prices := newDefaultPriceProvider()
 	comission := newFixedRateComission(cfg.BuyComission, cfg.SellComission)
-	report := newJsonReportBuilder()
+	report := newJsonReportBuilder(log)
+	acc := &defaultAccount{balance: decimal.NewFromInt(int64(cfg.Balance))}
+
 	emu := &TradingEmulator{
+		cfg:     cfg,
 		readers: make(map[string]*barReader),
 		bars:    make(map[string]chan market.Bar),
-		posMan:  *newPositionManager(comission, prices, report),
+		prices:  prices,
+		report:  report,
+		Acc:     acc,
+		PosMan:  *newPositionManager(log, comission, prices, report, acc),
 	}
 
 	for symbol, path := range cfg.Data {
@@ -58,7 +70,7 @@ func (e *TradingEmulator) Run(ctx context.Context) error {
 		wg.Add(1)
 		dst := e.bars[symbol]
 
-		go func(rdr *barReader, dst chan<- market.Bar) {
+		go func(symbol string, rdr *barReader, dst chan<- market.Bar) {
 			defer wg.Done()
 			defer close(dst)
 
@@ -68,10 +80,10 @@ func (e *TradingEmulator) Run(ctx context.Context) error {
 					break
 				}
 
+				e.prices.UpdatePrice(symbol, b.bar)
 				dst <- b.bar
-				// todo: process bar
 			}
-		}(rdr, dst)
+		}(symbol, rdr, dst)
 	}
 
 	go func() {
@@ -86,6 +98,10 @@ func (e *TradingEmulator) Run(ctx context.Context) error {
 
 	if len(errs) > 0 {
 		return errors.Join(errs...)
+	}
+
+	if err := e.report.WriteToFile(e.cfg.Report); err != nil {
+		return fmt.Errorf("failed to create trading report: %w", err)
 	}
 
 	return nil

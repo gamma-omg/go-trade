@@ -39,7 +39,7 @@ type TradingStrategy struct {
 	position  *market.Position
 }
 
-func newTradingStrategy(symbol string, cfg config.Strategy, indicator tradingIndicator, positionManager positionManager, log *slog.Logger) *TradingStrategy {
+func newTradingStrategy(symbol string, cfg config.Strategy, indicator tradingIndicator, positionManager positionManager, acc account, log *slog.Logger) *TradingStrategy {
 	return &TradingStrategy{
 		log:       log,
 		symbol:    symbol,
@@ -47,6 +47,7 @@ func newTradingStrategy(symbol string, cfg config.Strategy, indicator tradingInd
 		indicator: indicator,
 		posScaler: &market.LinearScaler{MaxScale: cfg.PositionScale},
 		posMan:    positionManager,
+		acc:       acc,
 		position:  nil,
 	}
 }
@@ -61,15 +62,13 @@ func (ts *TradingStrategy) Run(ctx context.Context) error {
 		return nil
 	}
 
-	ts.log.Info("signal detected", "action", s.Act, "confidence", s.Confidence)
-
-	if s.Act == indicator.ACT_BUY && s.Confidence >= ts.cfg.BuyConfidence {
+	if ts.position == nil && s.Act == indicator.ACT_BUY && s.Confidence >= ts.cfg.BuyConfidence {
 		if err = ts.buy(ctx, s.Confidence); err != nil {
 			return fmt.Errorf("failed to process buy signal: %w", err)
 		}
 	}
 
-	if s.Act == indicator.ACT_SELL && s.Confidence >= ts.cfg.SellConfidence {
+	if ts.position != nil && s.Act == indicator.ACT_SELL && s.Confidence >= ts.cfg.SellConfidence {
 		if err = ts.sell(ctx, s.Confidence); err != nil {
 			return fmt.Errorf("failed to process sell signal: %w", err)
 		}
@@ -91,14 +90,11 @@ func (ts *TradingStrategy) buy(ctx context.Context, confidence float64) error {
 }
 
 func (ts *TradingStrategy) sell(ctx context.Context, _ float64) error {
-	if ts.position == nil {
-		return nil
-	}
-
 	if err := ts.posMan.Close(ctx, ts.position.Symbol); err != nil {
 		return fmt.Errorf("failed to sell position: %w", err)
 	}
 
+	ts.position = nil
 	return nil
 }
 

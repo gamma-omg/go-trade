@@ -2,6 +2,8 @@ package emulator
 
 import (
 	"bytes"
+	"io"
+	"log/slog"
 	"testing"
 
 	"github.com/shopspring/decimal"
@@ -10,7 +12,7 @@ import (
 )
 
 func TestWrite(t *testing.T) {
-	r := newJsonReportBuilder()
+	r := newJsonReportBuilder(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	r.SubmitDeal(Deal{
 		Symbol: "BTC",
 		Spend:  decimal.NewFromInt(100),
@@ -28,7 +30,6 @@ func TestWrite(t *testing.T) {
 
 	assert.JSONEq(t, `
 {
-	"total_spend": "1100",
 	"total_gain": "1320",
 	"total_gain_pct": 1.2,
 	"deals": {
@@ -47,7 +48,7 @@ func TestWrite(t *testing.T) {
 }
 
 func TestWrite_emptyReport(t *testing.T) {
-	r := newJsonReportBuilder()
+	r := newJsonReportBuilder(slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	var buff bytes.Buffer
 	err := r.Write(&buff)
@@ -57,7 +58,7 @@ func TestWrite_emptyReport(t *testing.T) {
 }
 
 func TestSubmitDeal_divideByZero(t *testing.T) {
-	r := newJsonReportBuilder()
+	r := newJsonReportBuilder(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	r.SubmitDeal(Deal{
 		Symbol: "BTC",
 		Gain:   decimal.NewFromInt(100),
@@ -70,7 +71,6 @@ func TestSubmitDeal_divideByZero(t *testing.T) {
 
 	assert.JSONEq(t, `
 {
-	"total_spend": "0",
 	"total_gain": "100",
 	"deals": {
 		"BTC": [{

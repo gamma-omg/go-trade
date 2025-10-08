@@ -164,6 +164,7 @@ func TestSell(t *testing.T) {
 	require.NoError(t, s.sell(context.Background(), 0.6))
 
 	assert.ElementsMatch(t, []market.Position{o}, posMan.positions)
+	assert.Nil(t, s.position)
 }
 
 func TestGetAvailableFunds(t *testing.T) {
