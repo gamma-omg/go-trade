@@ -31,6 +31,6 @@ go.work.sum
 .vscode
 
 # project
-bin/
-data/
-config/
+/bin
+/data
+/config
