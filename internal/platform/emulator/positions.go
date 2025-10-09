@@ -110,7 +110,7 @@ func (pm *positionManager) Close(ctx context.Context, symbol string) error {
 	}
 
 	before := p.Qty.Mul(p.EntryPrice)
-	after := pm.comission.ApplyOnSell(bar.Close)
+	after := p.Qty.Mul(pm.comission.ApplyOnSell(bar.Close))
 	if err = pm.acc.Deposit(after); err != nil {
 		return fmt.Errorf("failed to deposit funds: %w", err)
 	}

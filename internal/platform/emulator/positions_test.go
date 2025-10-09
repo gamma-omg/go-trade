@@ -126,7 +126,7 @@ func TestClose(t *testing.T) {
 
 	l := slog.New(slog.NewTextHandler(io.Discard, nil))
 	pm := newPositionManager(l, &noComission{}, &prices, &report, &defaultAccount{balance: decimal.NewFromInt(100000)})
-	_, err := pm.Open(context.Background(), "BTC", decimal.NewFromFloat(100))
+	_, err := pm.Open(context.Background(), "BTC", decimal.NewFromFloat(200))
 	require.NoError(t, err)
 
 	prices.price["BTC"] = market.Bar{
@@ -144,7 +144,7 @@ func TestClose(t *testing.T) {
 	assert.Equal(t, ts.Add(1*time.Minute), d.SellTime)
 	assert.True(t, decimal.NewFromFloat(100).Equal(d.BuyPrice))
 	assert.True(t, decimal.NewFromFloat(120).Equal(d.SellPrice))
-	assert.True(t, decimal.NewFromFloat(20).Equal(d.Gain))
+	assert.True(t, decimal.NewFromFloat(40).Equal(d.Gain))
 }
 
 func TestClose_failureScenarious(t *testing.T) {
