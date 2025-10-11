@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -30,8 +31,9 @@ func TestRun(t *testing.T) {
 		Data: map[string]string{
 			"BTC": f,
 		},
-		Start: time.Unix(0, 0),
-		End:   time.Unix(0xfffffffffffffff, 0),
+		Start:  time.Unix(0, 0),
+		End:    time.Unix(0xfffffffffffffff, 0),
+		Report: filepath.Join(t.TempDir(), "report"),
 	})
 	require.NoError(t, err)
 
