@@ -74,7 +74,7 @@ func (r *jsonReportBuilder) SubmitDeal(d Deal) {
 	pct, _ = r.gained.Div(r.spent).Float64()
 	r.report.TotalGainPct = pct
 
-	r.log.Info("deal closed", slog.String("symbol", d.Symbol), slog.Float64("gain_pct", pct), slog.Time("time", d.SellTime))
+	r.log.Info("deal closed", slog.String("symbol", d.Symbol), slog.Float64("gain_pct", pct), slog.Time("buy_time", d.BuyTime), slog.Time("sell_time", d.SellTime))
 }
 
 func (r *jsonReportBuilder) Write(w io.Writer) error {

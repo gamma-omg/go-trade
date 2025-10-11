@@ -52,16 +52,26 @@ type Platform interface{}
 
 // indicator configs
 
+type DebugLevel int
+
+const (
+	DebugNone DebugLevel = iota
+	DebugBuyOrSell
+	DebugAll
+)
+
 type MACD struct {
-	Fast          int     `yaml:"fast"`
-	Slow          int     `yaml:"slow"`
-	Signal        int     `yaml:"signal"`
-	BuyThreshold  float64 `yaml:"buy_threshold"`
-	BuyCap        float64 `yaml:"buy_cap"`
-	SellThreshold float64 `yaml:"sell_threshold"`
-	SellCap       float64 `yaml:"sell_cap"`
-	CrossLookback int     `yaml:"cross_lookback"`
-	EmaWarmup     int     `yaml:"ema_warmup"`
+	Fast          int        `yaml:"fast"`
+	Slow          int        `yaml:"slow"`
+	Signal        int        `yaml:"signal"`
+	BuyThreshold  float64    `yaml:"buy_threshold"`
+	BuyCap        float64    `yaml:"buy_cap"`
+	SellThreshold float64    `yaml:"sell_threshold"`
+	SellCap       float64    `yaml:"sell_cap"`
+	CrossLookback int        `yaml:"cross_lookback"`
+	EmaWarmup     int        `yaml:"ema_warmup"`
+	DebugLevel    DebugLevel `yaml:"debug_level"`
+	DebugDir      string     `yaml:"debug_dir"`
 }
 
 type Ensemble struct {
