@@ -25,7 +25,7 @@ func (i *MACDIndicator) GetSignal() (s Signal, err error) {
 		Confidence: 1.0,
 	}
 
-	count := max(i.cfg.Fast, i.cfg.Slow, i.cfg.Signal)
+	count := i.cfg.EmaWarmup * max(i.cfg.Fast, i.cfg.Slow, i.cfg.Signal)
 	if !i.bars.HasBars(count) {
 		return
 	}

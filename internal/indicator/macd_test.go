@@ -137,6 +137,7 @@ func TestMACD_GetSignal(t *testing.T) {
 					SellThreshold: c.sellThreshold,
 					SellCap:       c.sellCap,
 					CrossLookback: c.lookback,
+					EmaWarmup:     1,
 				},
 				bars: &mockBarsProvider{closePrices: c.prices},
 			}
@@ -248,9 +249,10 @@ func TestMACD_holdWhenNotEnoughData(t *testing.T) {
 	barsProvider := mockBarsProvider{closePrices: []float64{1, 2, 3, 4}}
 	ind := MACDIndicator{
 		cfg: config.MACD{
-			Fast:   8,
-			Slow:   12,
-			Signal: 10,
+			Fast:      8,
+			Slow:      12,
+			Signal:    10,
+			EmaWarmup: 1,
 		},
 		bars: &barsProvider,
 	}

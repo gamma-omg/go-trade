@@ -61,6 +61,7 @@ type MACD struct {
 	SellThreshold float64 `yaml:"sell_threshold"`
 	SellCap       float64 `yaml:"sell_cap"`
 	CrossLookback int     `yaml:"cross_lookback"`
+	EmaWarmup     int     `yaml:"ema_warmup"`
 }
 
 type Ensemble struct {
