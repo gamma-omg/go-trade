@@ -37,15 +37,18 @@ type mockPositionManager struct {
 	qtyFunc   func(size decimal.Decimal, symbol string) decimal.Decimal
 }
 
-func (pm *mockPositionManager) Open(_ context.Context, symbol string, size decimal.Decimal) (*market.Position, error) {
-	pos := &market.Position{Qty: pm.qtyFunc(size, symbol)}
+func (pm *mockPositionManager) Open(_ context.Context, asset *market.Asset, size decimal.Decimal) (*market.Position, error) {
+	pos := &market.Position{
+		Asset: asset,
+		Qty:   pm.qtyFunc(size, asset.Symbol),
+	}
 	pm.positions = append(pm.positions, pos)
 	return pos, nil
 }
 
 func (pm *mockPositionManager) Close(_ context.Context, p *market.Position) (market.Deal, error) {
 	pm.positions = slices.DeleteFunc(pm.positions, func(x *market.Position) bool {
-		return x.Symbol == p.Symbol
+		return x.Asset == p.Asset
 	})
 
 	return market.Deal{}, nil
@@ -105,11 +108,9 @@ func TestStrategyRun(t *testing.T) {
 				posMan.positions = append(posMan.positions, c.position)
 			}
 
-			i := 0
+			a := market.NewAsset(fmt.Sprintf("s%d", i), 1)
 			for len(posMan.positions) < c.initialPos {
-				posMan.positions = append(posMan.positions, &market.Position{
-					Symbol: fmt.Sprintf("%d", i),
-				})
+				posMan.positions = append(posMan.positions, &market.Position{Asset: a})
 			}
 
 			scaler := mockPositionScaler{
@@ -119,6 +120,7 @@ func TestStrategyRun(t *testing.T) {
 			}
 
 			s := TradingStrategy{
+				asset:     a,
 				log:       slog.Default(),
 				cfg:       cfg,
 				posMan:    &posMan,
@@ -149,6 +151,7 @@ func TestBuy(t *testing.T) {
 	}}
 
 	s := TradingStrategy{
+		asset:     market.NewAsset("BTC", 1),
 		posScaler: scaler,
 		posMan:    posMan,
 		acc:       &mockAccount{balance: 1000},
@@ -165,8 +168,8 @@ func TestBuy(t *testing.T) {
 }
 
 func TestSell(t *testing.T) {
-	p := &market.Position{Symbol: "p"}
-	o := &market.Position{Symbol: "o"}
+	p := &market.Position{Asset: market.NewAsset("p", 1)}
+	o := &market.Position{Asset: market.NewAsset("o", 1)}
 	posMan := &mockPositionManager{
 		positions: []*market.Position{p, o},
 	}

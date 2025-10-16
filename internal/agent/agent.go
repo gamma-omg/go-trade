@@ -48,7 +48,7 @@ func NewTradingAgent(log *slog.Logger, cfg config.Config, platform tradingPlatfo
 				return nil, fmt.Errorf("failed to creat trading strategy for symbol %s: %w", symbol, err)
 			}
 
-			return newTradingStrategy(symbol, cfg, ind, platform, platform, report, log), nil
+			return newTradingStrategy(asset, cfg, ind, platform, platform, report, log), nil
 		},
 	}
 }

@@ -7,7 +7,6 @@ import (
 
 	"github.com/gamma-omg/trading-bot/internal/config"
 	"github.com/gamma-omg/trading-bot/internal/market"
-	"github.com/gamma-omg/trading-bot/internal/platform/common"
 	"github.com/shopspring/decimal"
 )
 
@@ -15,13 +14,11 @@ type TradingEmulator struct {
 	cfg     config.Emulator
 	readers map[string]*barReader
 	bars    map[string]chan market.Bar
-	prices  *common.DefaultPriceProvider
 	Acc     *defaultAccount
 	PosMan  positionManager
 }
 
 func NewTradingEmulator(log *slog.Logger, cfg config.Emulator) (*TradingEmulator, error) {
-	prices := common.NewDefaultPriceProvider()
 	comission := newFixedRateComission(cfg.BuyComission, cfg.SellComission)
 	acc := &defaultAccount{balance: decimal.NewFromInt(int64(cfg.Balance))}
 
@@ -29,9 +26,8 @@ func NewTradingEmulator(log *slog.Logger, cfg config.Emulator) (*TradingEmulator
 		cfg:     cfg,
 		readers: make(map[string]*barReader),
 		bars:    make(map[string]chan market.Bar),
-		prices:  prices,
 		Acc:     acc,
-		PosMan:  *newPositionManager(log, comission, prices, acc),
+		PosMan:  *newPositionManager(log, comission, acc),
 	}
 
 	for symbol, path := range cfg.Data {
@@ -68,7 +64,6 @@ func (e *TradingEmulator) GetBars(ctx context.Context, symbol string) (<-chan ma
 				continue
 			}
 
-			e.prices.UpdatePrice(symbol, r.bar)
 			bars <- r.bar
 		}
 	}()
@@ -76,8 +71,8 @@ func (e *TradingEmulator) GetBars(ctx context.Context, symbol string) (<-chan ma
 	return bars, errs
 }
 
-func (e *TradingEmulator) Open(ctx context.Context, symbol string, size decimal.Decimal) (*market.Position, error) {
-	return e.PosMan.Open(ctx, symbol, size)
+func (e *TradingEmulator) Open(ctx context.Context, asset *market.Asset, size decimal.Decimal) (*market.Position, error) {
+	return e.PosMan.Open(ctx, asset, size)
 }
 
 func (e *TradingEmulator) Close(ctx context.Context, p *market.Position) (market.Deal, error) {

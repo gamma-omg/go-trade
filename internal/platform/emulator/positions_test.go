@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"sync"
 	"testing"
 	"time"
 
@@ -14,24 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type mockPriceProvider struct {
-	price map[string]market.Bar
-	mu    sync.Mutex
-}
-
-func (pp *mockPriceProvider) GetLastBar(symbol string) (bar market.Bar, err error) {
-	pp.mu.Lock()
-	defer pp.mu.Unlock()
-
-	bar, ok := pp.price[symbol]
-	if !ok {
-		err = fmt.Errorf("unknown symbol %s", symbol)
-		return
-	}
-
-	return
-}
 
 func TestOpen(t *testing.T) {
 	t.Parallel()
@@ -49,24 +30,21 @@ func TestOpen(t *testing.T) {
 		{symbol: "C4", time: time.Now(), price: 1000, size: 200, qty: 0.2},
 	}
 
-	prices := mockPriceProvider{price: make(map[string]market.Bar)}
-	for _, c := range tbl {
-		prices.price[c.symbol] = market.Bar{
-			Time:  c.time,
-			Close: decimal.NewFromFloat(c.price),
-		}
-	}
-
 	l := slog.New(slog.NewTextHandler(io.Discard, nil))
 	acc := defaultAccount{balance: decimal.NewFromInt(10000)}
-	pm := newPositionManager(l, &noComission{}, &prices, &acc)
+	pm := newPositionManager(l, &noComission{}, &acc)
 
 	for i, c := range tbl {
-		t.Run(fmt.Sprintf("case_{%d}", i), func(t *testing.T) {
-			p, err := pm.Open(context.Background(), c.symbol, decimal.NewFromFloat(c.size))
+		t.Run(fmt.Sprintf("case_%d", i), func(t *testing.T) {
+			a := market.NewAssetWithBars(c.symbol, []market.Bar{{
+				Time:  c.time,
+				Close: decimal.NewFromFloat(c.price),
+			}})
+			p, err := pm.Open(context.Background(), a, decimal.NewFromFloat(c.size))
 			require.NoError(t, err)
 
-			assert.Equal(t, c.symbol, p.Symbol)
+			assert.Equal(t, a, p.Asset)
+			assert.Equal(t, c.symbol, p.Asset.Symbol)
 			assert.Equal(t, c.time, p.OpenTime)
 			assert.True(t, decimal.NewFromFloat(c.qty).Equal(p.Qty))
 			assert.True(t, decimal.NewFromFloat(c.price).Equal(p.EntryPrice))
@@ -75,52 +53,38 @@ func TestOpen(t *testing.T) {
 }
 
 func TestOpen_withdrawsMoney(t *testing.T) {
-
-	prices := mockPriceProvider{
-		price: map[string]market.Bar{
-			"BTC": {Close: decimal.NewFromInt(100)},
-		},
-	}
 	acc := defaultAccount{balance: decimal.NewFromInt(1000)}
 	l := slog.New(slog.NewTextHandler(io.Discard, nil))
-	pm := newPositionManager(l, &noComission{}, &prices, &acc)
+	pm := newPositionManager(l, &noComission{}, &acc)
 
-	_, err := pm.Open(context.Background(), "BTC", decimal.NewFromInt(100))
+	a := market.NewAssetWithBars("BTC", []market.Bar{{Close: decimal.NewFromInt(1000)}})
+	_, err := pm.Open(context.Background(), a, decimal.NewFromInt(100))
 	require.NoError(t, err)
 
 	assert.True(t, acc.balance.Equal(decimal.NewFromInt(900)))
 }
 
 func TestOpen_failsWhenCalledTwice(t *testing.T) {
-	prices := mockPriceProvider{
-		price: map[string]market.Bar{"BTC": {Close: decimal.NewFromFloat(100)}},
-	}
-
 	l := slog.New(slog.NewTextHandler(io.Discard, nil))
-	pm := newPositionManager(l, &noComission{}, &prices, &defaultAccount{balance: decimal.NewFromInt(10000)})
+	pm := newPositionManager(l, &noComission{}, &defaultAccount{balance: decimal.NewFromInt(10000)})
+	a := market.NewAssetWithBars("BTC", []market.Bar{{Close: decimal.NewFromInt(100)}})
 
-	_, err := pm.Open(context.Background(), "BTC", decimal.NewFromFloat(100))
+	_, err := pm.Open(context.Background(), a, decimal.NewFromFloat(100))
 	require.NoError(t, err)
 }
 
 func TestClose(t *testing.T) {
 	ts := time.Now()
-	prices := mockPriceProvider{
-		price: map[string]market.Bar{"BTC": {
-			Close: decimal.NewFromFloat(100),
-			Time:  ts,
-		}},
-	}
-
 	l := slog.New(slog.NewTextHandler(io.Discard, nil))
-	pm := newPositionManager(l, &noComission{}, &prices, &defaultAccount{balance: decimal.NewFromInt(100000)})
-	p, err := pm.Open(context.Background(), "BTC", decimal.NewFromFloat(200))
+	pm := newPositionManager(l, &noComission{}, &defaultAccount{balance: decimal.NewFromInt(100000)})
+	a := market.NewAssetWithBars("BTC", []market.Bar{{Time: ts, Close: decimal.NewFromInt(100)}})
+	p, err := pm.Open(context.Background(), a, decimal.NewFromFloat(200))
 	require.NoError(t, err)
 
-	prices.price["BTC"] = market.Bar{
-		Close: decimal.NewFromFloat(120),
+	a.Receive(market.Bar{
 		Time:  ts.Add(1 * time.Minute),
-	}
+		Close: decimal.NewFromFloat(120),
+	})
 	d, err := pm.Close(context.Background(), p)
 	require.NoError(t, err)
 

@@ -59,6 +59,13 @@ func TestAssetGetBars(t *testing.T) {
 			out:   []float64{1, 2, 3},
 			err:   false,
 		},
+		{
+			bars:  []float64{1, 2, 3, 4, 5, 6},
+			head:  7,
+			count: 3,
+			out:   []float64{6, 1, 2},
+			err:   false,
+		},
 	}
 
 	for i, c := range tbl {
@@ -74,7 +81,7 @@ func TestAssetGetBars(t *testing.T) {
 			}
 
 			a := Asset{
-				symbol: fmt.Sprintf("s%d", i),
+				Symbol: fmt.Sprintf("s%d", i),
 				bars:   in,
 				head:   c.head,
 				size:   len(in),
@@ -87,6 +94,69 @@ func TestAssetGetBars(t *testing.T) {
 			}
 
 			assert.ElementsMatch(t, bars, out)
+		})
+	}
+}
+
+func TestGetBars_invalidArgs(t *testing.T) {
+	a := Asset{}
+
+	_, err := a.GetBars(-10)
+	require.Error(t, err)
+
+	_, err = a.GetBars(0)
+	require.Error(t, err)
+}
+
+func TestGetLastBar(t *testing.T) {
+	tbl := []struct {
+		bars []float64
+		head int
+		ans  float64
+		err  bool
+	}{
+		{
+			bars: []float64{},
+			head: -1,
+			ans:  0,
+			err:  true,
+		},
+		{
+			bars: []float64{1},
+			head: 0,
+			ans:  1,
+			err:  false,
+		},
+		{
+			bars: []float64{1, 2, 3},
+			head: 1,
+			ans:  2,
+			err:  false,
+		},
+		{
+			bars: []float64{1, 2, 3},
+			head: 3,
+			ans:  1,
+			err:  false,
+		},
+	}
+
+	for i, c := range tbl {
+		t.Run(fmt.Sprintf("case_%d", i), func(t *testing.T) {
+			bars := make([]Bar, len(c.bars))
+			for i, v := range c.bars {
+				bars[i] = Bar{Close: decimal.NewFromFloat(v)}
+			}
+
+			a := Asset{
+				bars: bars,
+				head: c.head,
+				size: len(bars),
+			}
+
+			b, err := a.GetLastBar()
+			assert.Equal(t, c.err, err != nil)
+			assert.True(t, decimal.NewFromFloat(c.ans).Equal(b.Close))
 		})
 	}
 }
@@ -112,7 +182,7 @@ func TestAssetHasBars(t *testing.T) {
 			}
 
 			a := &Asset{
-				symbol: fmt.Sprintf("s%d", i),
+				Symbol: fmt.Sprintf("s%d", i),
 				bars:   in,
 				head:   len(in) - 1,
 				size:   len(in),

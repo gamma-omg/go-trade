@@ -10,14 +10,12 @@ import (
 	"github.com/alpacahq/alpaca-trade-api-go/v3/marketdata/stream"
 	"github.com/gamma-omg/trading-bot/internal/config"
 	"github.com/gamma-omg/trading-bot/internal/market"
-	"github.com/gamma-omg/trading-bot/internal/platform/common"
 	"github.com/shopspring/decimal"
 )
 
 type AlpacaPlatform struct {
 	cfg    config.Alpaca
 	client *alpaca.Client
-	prices *common.DefaultPriceProvider
 }
 
 func NewAlpacaPlatform(cfg config.Alpaca) (*AlpacaPlatform, error) {
@@ -34,7 +32,6 @@ func NewAlpacaPlatform(cfg config.Alpaca) (*AlpacaPlatform, error) {
 	return &AlpacaPlatform{
 		cfg:    cfg,
 		client: c,
-		prices: common.NewDefaultPriceProvider(),
 	}, nil
 }
 
@@ -59,7 +56,6 @@ func (ap *AlpacaPlatform) GetBars(ctx context.Context, symbol string) (<-chan ma
 					Volume: decimal.NewFromFloat(cb.Volume),
 				}
 
-				ap.prices.UpdatePrice(symbol, b)
 				bars <- b
 			}, symbol))
 
@@ -79,8 +75,8 @@ func (ap *AlpacaPlatform) GetBars(ctx context.Context, symbol string) (<-chan ma
 	return bars, errs
 }
 
-func (ap *AlpacaPlatform) Open(ctx context.Context, symbol string, size decimal.Decimal) (p *market.Position, err error) {
-	bar, err := ap.prices.GetLastBar(symbol)
+func (ap *AlpacaPlatform) Open(ctx context.Context, asset *market.Asset, size decimal.Decimal) (p *market.Position, err error) {
+	bar, err := asset.GetLastBar()
 	if err != nil {
 		err = fmt.Errorf("failed to get symbold price: %w", err)
 		return
@@ -89,7 +85,7 @@ func (ap *AlpacaPlatform) Open(ctx context.Context, symbol string, size decimal.
 	qty := bar.Close.Div(size)
 	ord, err := ap.client.PlaceOrder(alpaca.PlaceOrderRequest{
 		Side:        alpaca.Buy,
-		Symbol:      symbol,
+		Symbol:      asset.Symbol,
 		Qty:         &qty,
 		Type:        alpaca.Market,
 		TimeInForce: alpaca.IOC,
@@ -109,7 +105,7 @@ func (ap *AlpacaPlatform) Open(ctx context.Context, symbol string, size decimal.
 	}
 
 	p = &market.Position{
-		Symbol:     symbol,
+		Asset:      asset,
 		EntryPrice: *ord.FilledAvgPrice,
 		OpenTime:   *ord.FilledAt,
 		Qty:        ord.FilledQty,
@@ -121,7 +117,7 @@ func (ap *AlpacaPlatform) Open(ctx context.Context, symbol string, size decimal.
 
 func (ap *AlpacaPlatform) Close(ctx context.Context, p *market.Position) (d market.Deal, err error) {
 	r := alpaca.ClosePositionRequest{Percentage: decimal.NewFromInt(100)}
-	ord, err := ap.client.ClosePosition(p.Symbol, r)
+	ord, err := ap.client.ClosePosition(p.Asset.Symbol, r)
 	if err != nil {
 		err = fmt.Errorf("failed to close position: %w", err)
 		return
@@ -139,7 +135,7 @@ func (ap *AlpacaPlatform) Close(ctx context.Context, p *market.Position) (d mark
 	before := p.Price
 	after := ord.FilledAvgPrice.Mul(ord.FilledQty)
 	d = market.Deal{
-		Symbol:    p.Symbol,
+		Symbol:    p.Asset.Symbol,
 		SellTime:  *ord.FilledAt,
 		SellPrice: *ord.FilledAvgPrice,
 		Qty:       ord.FilledQty,

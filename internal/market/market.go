@@ -1,11 +1,23 @@
 package market
 
 import (
+	"errors"
 	"fmt"
+	"time"
+
+	"github.com/shopspring/decimal"
 )
 
+type Position struct {
+	Asset      *Asset
+	EntryPrice decimal.Decimal
+	Qty        decimal.Decimal
+	Price      decimal.Decimal
+	OpenTime   time.Time
+}
+
 type Asset struct {
-	symbol string
+	Symbol string
 	bars   []Bar
 	head   int
 	size   int
@@ -13,20 +25,51 @@ type Asset struct {
 
 func NewAsset(symbol string, bufSize int) *Asset {
 	return &Asset{
-		symbol: symbol,
-		bars:   make([]Bar, 2*bufSize),
-		head:   0,
-		size:   2 * bufSize,
+		Symbol: symbol,
+		bars:   make([]Bar, bufSize),
+		head:   -1,
+		size:   bufSize,
+	}
+}
+
+func NewAssetWithBars(symbol string, bars []Bar) *Asset {
+	return &Asset{
+		Symbol: symbol,
+		bars:   bars,
+		head:   len(bars) - 1,
+		size:   len(bars),
 	}
 }
 
 func (a *Asset) GetBars(count int) ([]Bar, error) {
-	n := a.head % a.size
-	if n < count-1 {
-		return nil, fmt.Errorf("insufficient data")
+	if count > a.size {
+		return nil, errors.New("requested bars count is greater than asset buffer capacity")
 	}
 
-	return a.bars[n-count+1 : n+1], nil
+	if count <= 0 {
+		return nil, fmt.Errorf("invalid argument: %d", count)
+	}
+
+	if a.head < count-1 {
+		return nil, errors.New("insufficient data")
+	}
+
+	e := a.head%a.size + 1
+	s := (a.head-count)%a.size + 1
+	if e >= s {
+		return a.bars[s:e], nil
+	}
+
+	return append(a.bars[s:], a.bars[0:e]...), nil
+}
+
+func (a *Asset) GetLastBar() (Bar, error) {
+	if a.head < 0 {
+		return Bar{}, errors.New("insufficient data")
+	}
+
+	n := a.head % a.size
+	return a.bars[n], nil
 }
 
 func (a *Asset) HasBars(count int) bool {
@@ -34,6 +77,6 @@ func (a *Asset) HasBars(count int) bool {
 }
 
 func (a *Asset) Receive(bar Bar) {
-	a.head = (a.head + 1) % a.size
-	a.bars[a.head] = bar
+	a.head++
+	a.bars[a.head%a.size] = bar
 }

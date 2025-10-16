@@ -17,7 +17,7 @@ type tradingIndicator interface {
 }
 
 type positionManager interface {
-	Open(ctx context.Context, symbol string, size decimal.Decimal) (*market.Position, error)
+	Open(ctx context.Context, a *market.Asset, size decimal.Decimal) (*market.Position, error)
 	Close(ctx context.Context, p *market.Position) (market.Deal, error)
 }
 
@@ -36,7 +36,7 @@ type reportBuilder interface {
 
 type TradingStrategy struct {
 	log       *slog.Logger
-	symbol    string
+	asset     *market.Asset
 	cfg       config.Strategy
 	indicator tradingIndicator
 	posMan    positionManager
@@ -46,10 +46,10 @@ type TradingStrategy struct {
 	position  *market.Position
 }
 
-func newTradingStrategy(symbol string, cfg config.Strategy, indicator tradingIndicator, positionManager positionManager, acc account, report reportBuilder, log *slog.Logger) *TradingStrategy {
+func newTradingStrategy(asset *market.Asset, cfg config.Strategy, indicator tradingIndicator, positionManager positionManager, acc account, report reportBuilder, log *slog.Logger) *TradingStrategy {
 	return &TradingStrategy{
 		log:       log,
-		symbol:    symbol,
+		asset:     asset,
 		cfg:       cfg,
 		indicator: indicator,
 		posScaler: &market.LinearScaler{MaxScale: cfg.PositionScale},
@@ -92,7 +92,7 @@ func (ts *TradingStrategy) buy(ctx context.Context, confidence float64) error {
 	}
 
 	size := ts.posScaler.GetSize(funds, confidence)
-	p, err := ts.posMan.Open(ctx, ts.symbol, size)
+	p, err := ts.posMan.Open(ctx, ts.asset, size)
 	if err != nil {
 		return fmt.Errorf("failed to open position: %w", err)
 	}

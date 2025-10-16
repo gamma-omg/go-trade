@@ -14,10 +14,6 @@ type comissionCharger interface {
 	ApplyOnSell(decimal.Decimal) decimal.Decimal
 }
 
-type priceProvider interface {
-	GetLastBar(symbol string) (market.Bar, error)
-}
-
 type account interface {
 	Deposit(amount decimal.Decimal) error
 	Withdraw(amount decimal.Decimal) error
@@ -25,24 +21,22 @@ type account interface {
 
 type positionManager struct {
 	log       *slog.Logger
-	prices    priceProvider
 	comission comissionCharger
 	acc       account
 }
 
-func newPositionManager(log *slog.Logger, comission comissionCharger, prices priceProvider, acc account) *positionManager {
+func newPositionManager(log *slog.Logger, comission comissionCharger, acc account) *positionManager {
 	return &positionManager{
 		log:       log,
 		comission: comission,
-		prices:    prices,
 		acc:       acc,
 	}
 }
 
-func (pm *positionManager) Open(ctx context.Context, symbol string, size decimal.Decimal) (p *market.Position, err error) {
-	bar, err := pm.prices.GetLastBar(symbol)
+func (pm *positionManager) Open(ctx context.Context, asset *market.Asset, size decimal.Decimal) (p *market.Position, err error) {
+	bar, err := asset.GetLastBar()
 	if err != nil {
-		err = fmt.Errorf("cannot find buy price for %s: %w", symbol, err)
+		err = fmt.Errorf("cannot find buy price for %s: %w", asset.Symbol, err)
 		return
 	}
 
@@ -54,7 +48,7 @@ func (pm *positionManager) Open(ctx context.Context, symbol string, size decimal
 	price := size
 	size = pm.comission.ApplyOnBuy(size)
 	p = &market.Position{
-		Symbol:     symbol,
+		Asset:      asset,
 		EntryPrice: bar.Close,
 		OpenTime:   bar.Time,
 		Qty:        size.Div(bar.Close),
@@ -65,9 +59,9 @@ func (pm *positionManager) Open(ctx context.Context, symbol string, size decimal
 }
 
 func (pm *positionManager) Close(ctx context.Context, p *market.Position) (d market.Deal, err error) {
-	bar, err := pm.prices.GetLastBar(p.Symbol)
+	bar, err := p.Asset.GetLastBar()
 	if err != nil {
-		err = fmt.Errorf("cannot find sell price for %s: %w", p.Symbol, err)
+		err = fmt.Errorf("cannot find sell price for %s: %w", p.Asset.Symbol, err)
 		return
 	}
 
@@ -79,7 +73,7 @@ func (pm *positionManager) Close(ctx context.Context, p *market.Position) (d mar
 	}
 
 	d = market.Deal{
-		Symbol:    p.Symbol,
+		Symbol:    p.Asset.Symbol,
 		SellTime:  bar.Time,
 		SellPrice: bar.Close,
 		BuyTime:   p.OpenTime,
