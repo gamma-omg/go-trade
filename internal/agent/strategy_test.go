@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/gamma-omg/trading-bot/internal/config"
 	"github.com/gamma-omg/trading-bot/internal/indicator"
@@ -78,6 +79,14 @@ func (m *mockReport) Write(w io.Writer) error {
 	return nil
 }
 
+type mockPositionValidator struct {
+	needClose bool
+}
+
+func (m *mockPositionValidator) NeedClose(p *market.Position) (bool, error) {
+	return m.needClose, nil
+}
+
 func TestStrategyRun(t *testing.T) {
 	cfg := config.Strategy{
 		Budget:         1000,
@@ -138,6 +147,44 @@ func TestStrategyRun(t *testing.T) {
 			assert.Len(t, posMan.positions, c.expectedPos)
 		})
 	}
+}
+
+func TestRun_closesInvalidPosition(t *testing.T) {
+	cfg := config.Strategy{
+		Budget:         1000,
+		BuyConfidence:  0.5,
+		SellConfidence: 0.5,
+	}
+	asset := market.NewAsset("sym", 1)
+	posMan := mockPositionManager{qtyFunc: func(size decimal.Decimal, symbol string) decimal.Decimal {
+		return size
+	}}
+	posMan.positions = []*market.Position{&market.Position{Asset: asset}}
+	scaler := mockPositionScaler{
+		scaleFunc: func(budget decimal.Decimal, confidence float64) decimal.Decimal {
+			return budget
+		},
+	}
+
+	s := TradingStrategy{
+		asset:        asset,
+		log:          slog.Default(),
+		cfg:          cfg,
+		posMan:       &posMan,
+		posScaler:    &scaler,
+		posValidator: &mockPositionValidator{needClose: true},
+		position:     posMan.positions[0],
+		acc:          &mockAccount{balance: int(cfg.Budget)},
+		report:       &mockReport{},
+		indicator:    &mockIndicator{},
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+
+	require.NoError(t, s.Run(ctx))
+	assert.Len(t, posMan.positions, 0)
+	assert.Nil(t, s.position)
 }
 
 func TestBuy(t *testing.T) {

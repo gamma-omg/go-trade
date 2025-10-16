@@ -34,33 +34,52 @@ type reportBuilder interface {
 	Write(w io.Writer) error
 }
 
-type TradingStrategy struct {
-	log       *slog.Logger
-	asset     *market.Asset
-	cfg       config.Strategy
-	indicator tradingIndicator
-	posMan    positionManager
-	posScaler positionScaler
-	acc       account
-	report    reportBuilder
-	position  *market.Position
+type positionValidator interface {
+	NeedClose(p *market.Position) (bool, error)
 }
 
-func newTradingStrategy(asset *market.Asset, cfg config.Strategy, indicator tradingIndicator, positionManager positionManager, acc account, report reportBuilder, log *slog.Logger) *TradingStrategy {
+type TradingStrategy struct {
+	log          *slog.Logger
+	asset        *market.Asset
+	cfg          config.Strategy
+	indicator    tradingIndicator
+	posMan       positionManager
+	posScaler    positionScaler
+	posValidator positionValidator
+	acc          account
+	report       reportBuilder
+	position     *market.Position
+}
+
+func newTradingStrategy(asset *market.Asset, cfg config.Strategy, indicator tradingIndicator, validator positionValidator, positionManager positionManager, acc account, report reportBuilder, log *slog.Logger) *TradingStrategy {
 	return &TradingStrategy{
-		log:       log,
-		asset:     asset,
-		cfg:       cfg,
-		indicator: indicator,
-		posScaler: &market.LinearScaler{MaxScale: cfg.PositionScale},
-		posMan:    positionManager,
-		acc:       acc,
-		report:    report,
-		position:  nil,
+		log:          log,
+		asset:        asset,
+		cfg:          cfg,
+		indicator:    indicator,
+		posValidator: validator,
+		posScaler:    &market.LinearScaler{MaxScale: cfg.PositionScale},
+		posMan:       positionManager,
+		acc:          acc,
+		report:       report,
+		position:     nil,
 	}
 }
 
 func (ts *TradingStrategy) Run(ctx context.Context) error {
+	if ts.position != nil {
+		close, err := ts.posValidator.NeedClose(ts.position)
+		if err != nil {
+			return fmt.Errorf("failed to validate position: %w", err)
+		}
+
+		if close {
+			if err := ts.sell(ctx, 1.0); err != nil {
+				return fmt.Errorf("failed to sell position: %w", err)
+			}
+		}
+	}
+
 	s, err := ts.indicator.GetSignal()
 	if err != nil {
 		return fmt.Errorf("failed to get signal from indicator: %w", err)

@@ -39,6 +39,8 @@ type Strategy struct {
 	Budget         int64              `yaml:"budget"`
 	BuyConfidence  float64            `yaml:"buy_confidence"`
 	SellConfidence float64            `yaml:"sell_confidence"`
+	TakeProfit     float64            `yaml:"take_profit"`
+	StopLoss       float64            `yaml:"stop_loss"`
 	PositionScale  float64            `yaml:"position_scale"`
 	MarketBuffer   int                `yaml:"market_buffer"`
 	IndRef         IndicatorReference `yaml:"indicator"`
