@@ -3,6 +3,7 @@ module github.com/gamma-omg/trading-bot
 go 1.24.0
 
 require (
+	github.com/alpacahq/alpaca-trade-api-go/v3 v3.9.0
 	github.com/pplcc/plotext v0.0.0-20180221170324-68ab3c6e05c3
 	github.com/shopspring/decimal v1.4.0
 	github.com/stretchr/testify v1.10.0

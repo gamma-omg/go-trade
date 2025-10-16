@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
-	"time"
 
 	"github.com/gamma-omg/trading-bot/internal/market"
 	"github.com/shopspring/decimal"
@@ -20,42 +19,25 @@ type priceProvider interface {
 	GetLastBar(symbol string) (market.Bar, error)
 }
 
-type reportBuilder interface {
-	SubmitDeal(d Deal)
-}
-
 type account interface {
 	Deposit(amount decimal.Decimal) error
 	Withdraw(amount decimal.Decimal) error
 }
 
-type Deal struct {
-	Symbol    string
-	BuyTime   time.Time
-	SellTime  time.Time
-	BuyPrice  decimal.Decimal
-	SellPrice decimal.Decimal
-	Qty       decimal.Decimal
-	Spend     decimal.Decimal
-	Gain      decimal.Decimal
-}
-
 type positionManager struct {
 	log       *slog.Logger
 	positions map[string]market.Position
-	report    reportBuilder
 	prices    priceProvider
 	comission comissionCharger
 	acc       account
 	mu        sync.Mutex
 }
 
-func newPositionManager(log *slog.Logger, comission comissionCharger, prices priceProvider, report reportBuilder, acc account) *positionManager {
+func newPositionManager(log *slog.Logger, comission comissionCharger, prices priceProvider, acc account) *positionManager {
 	return &positionManager{
 		log:       log,
 		comission: comission,
 		prices:    prices,
-		report:    report,
 		acc:       acc,
 		positions: make(map[string]market.Position),
 	}
@@ -95,29 +77,32 @@ func (pm *positionManager) Open(ctx context.Context, symbol string, size decimal
 	return p, nil
 }
 
-func (pm *positionManager) Close(ctx context.Context, symbol string) error {
+func (pm *positionManager) Close(ctx context.Context, symbol string) (d market.Deal, err error) {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 
 	p, ok := pm.positions[symbol]
 	if !ok {
-		return fmt.Errorf("no open positions for symbol %s", symbol)
+		err = fmt.Errorf("no open positions for symbol %s", symbol)
+		return
 	}
 
 	bar, err := pm.prices.GetLastBar(symbol)
 	if err != nil {
-		return fmt.Errorf("cannot find sell price for %s: %w", symbol, err)
+		err = fmt.Errorf("cannot find sell price for %s: %w", symbol, err)
+		return
 	}
 
 	before := p.Qty.Mul(p.EntryPrice)
 	after := pm.comission.ApplyOnSell(p.Qty.Mul(bar.Close))
 	if err = pm.acc.Deposit(after); err != nil {
-		return fmt.Errorf("failed to deposit funds: %w", err)
+		err = fmt.Errorf("failed to deposit funds: %w", err)
+		return
 	}
 
 	delete(pm.positions, symbol)
 
-	d := Deal{
+	d = market.Deal{
 		Symbol:    symbol,
 		SellTime:  bar.Time,
 		SellPrice: bar.Close,
@@ -127,7 +112,5 @@ func (pm *positionManager) Close(ctx context.Context, symbol string) error {
 		Spend:     p.Price,
 		Gain:      after.Sub(before),
 	}
-	pm.report.SubmitDeal(d)
-
-	return nil
+	return
 }

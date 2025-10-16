@@ -12,7 +12,6 @@ import (
 
 type Config struct {
 	Strategies  map[string]Strategy `yaml:"strategies"`
-	Report      string              `yaml:"report"`
 	PlatformRef PlatformReference   `yaml:"platform"`
 }
 
@@ -120,6 +119,8 @@ func (w *IndicatorReference) UnmarshalYAML(value *yaml.Node) error {
 
 // platform configs
 
+// emulator
+
 type Emulator struct {
 	Data          map[string]string `yaml:"data"`
 	Start         time.Time         `yaml:"start"`
@@ -127,12 +128,13 @@ type Emulator struct {
 	BuyComission  float64           `yaml:"buy_comission"`
 	SellComission float64           `yaml:"sell_comission"`
 	Balance       float64           `yaml:"balance"`
+	Report        string            `yaml:"report"`
 }
 
+// alpaca
+
 type Alpaca struct {
-	BaseUrl string `yaml:"base_url"`
-	ApiKey  string `yaml:"api_key"`
-	Secret  string `yaml:"secret"`
+	ApiUrl string
 }
 
 func (w *PlatformReference) UnmarshalYAML(value *yaml.Node) error {
@@ -155,7 +157,7 @@ func (w *PlatformReference) UnmarshalYAML(value *yaml.Node) error {
 	case "alpaca":
 		var alpaca Alpaca
 		if err := value.Content[1].Decode(&alpaca); err != nil {
-			return fmt.Errorf("failed parsing Alpaca platform config: %w", err)
+			return fmt.Errorf("failed parsing alpaca platform config: %w", err)
 		}
 		w.Platform = alpaca
 	default:

@@ -33,14 +33,6 @@ func (pp *mockPriceProvider) GetLastBar(symbol string) (bar market.Bar, err erro
 	return
 }
 
-type mockReportBuilder struct {
-	deals []Deal
-}
-
-func (rb *mockReportBuilder) SubmitDeal(d Deal) {
-	rb.deals = append(rb.deals, d)
-}
-
 func TestOpen(t *testing.T) {
 	t.Parallel()
 
@@ -67,7 +59,7 @@ func TestOpen(t *testing.T) {
 
 	l := slog.New(slog.NewTextHandler(io.Discard, nil))
 	acc := defaultAccount{balance: decimal.NewFromInt(10000)}
-	pm := newPositionManager(l, &noComission{}, &prices, &mockReportBuilder{}, &acc)
+	pm := newPositionManager(l, &noComission{}, &prices, &acc)
 
 	for i, c := range tbl {
 		t.Run(fmt.Sprintf("case_{%d}", i), func(t *testing.T) {
@@ -91,7 +83,7 @@ func TestOpen_withdrawsMoney(t *testing.T) {
 	}
 	acc := defaultAccount{balance: decimal.NewFromInt(1000)}
 	l := slog.New(slog.NewTextHandler(io.Discard, nil))
-	pm := newPositionManager(l, &noComission{}, &prices, &mockReportBuilder{}, &acc)
+	pm := newPositionManager(l, &noComission{}, &prices, &acc)
 
 	_, err := pm.Open(context.Background(), "BTC", decimal.NewFromInt(100))
 	require.NoError(t, err)
@@ -105,7 +97,7 @@ func TestOpen_failsWhenCalledTwice(t *testing.T) {
 	}
 
 	l := slog.New(slog.NewTextHandler(io.Discard, nil))
-	pm := newPositionManager(l, &noComission{}, &prices, &mockReportBuilder{}, &defaultAccount{balance: decimal.NewFromInt(10000)})
+	pm := newPositionManager(l, &noComission{}, &prices, &defaultAccount{balance: decimal.NewFromInt(10000)})
 
 	_, err := pm.Open(context.Background(), "BTC", decimal.NewFromFloat(100))
 	require.NoError(t, err)
@@ -116,7 +108,6 @@ func TestOpen_failsWhenCalledTwice(t *testing.T) {
 
 func TestClose(t *testing.T) {
 	ts := time.Now()
-	report := mockReportBuilder{}
 	prices := mockPriceProvider{
 		price: map[string]market.Bar{"BTC": {
 			Close: decimal.NewFromFloat(100),
@@ -125,7 +116,7 @@ func TestClose(t *testing.T) {
 	}
 
 	l := slog.New(slog.NewTextHandler(io.Discard, nil))
-	pm := newPositionManager(l, &noComission{}, &prices, &report, &defaultAccount{balance: decimal.NewFromInt(100000)})
+	pm := newPositionManager(l, &noComission{}, &prices, &defaultAccount{balance: decimal.NewFromInt(100000)})
 	_, err := pm.Open(context.Background(), "BTC", decimal.NewFromFloat(200))
 	require.NoError(t, err)
 
@@ -133,12 +124,9 @@ func TestClose(t *testing.T) {
 		Close: decimal.NewFromFloat(120),
 		Time:  ts.Add(1 * time.Minute),
 	}
-	err = pm.Close(context.Background(), "BTC")
+	d, err := pm.Close(context.Background(), "BTC")
 	require.NoError(t, err)
 
-	assert.Equal(t, 1, len(report.deals))
-
-	d := report.deals[0]
 	assert.Equal(t, "BTC", d.Symbol)
 	assert.Equal(t, ts, d.BuyTime)
 	assert.Equal(t, ts.Add(1*time.Minute), d.SellTime)
@@ -153,17 +141,17 @@ func TestClose_failureScenarious(t *testing.T) {
 	}
 
 	l := slog.New(slog.NewTextHandler(io.Discard, nil))
-	pm := newPositionManager(l, &noComission{}, &prices, &mockReportBuilder{}, &defaultAccount{balance: decimal.NewFromInt(100000)})
+	pm := newPositionManager(l, &noComission{}, &prices, &defaultAccount{balance: decimal.NewFromInt(100000)})
 
-	err := pm.Close(context.Background(), "BTC")
+	_, err := pm.Close(context.Background(), "BTC")
 	require.Error(t, err)
 
 	_, err = pm.Open(context.Background(), "BTC", decimal.NewFromFloat(1))
 	require.NoError(t, err)
 
-	err = pm.Close(context.Background(), "BTC")
+	_, err = pm.Close(context.Background(), "BTC")
 	require.NoError(t, err)
 
-	err = pm.Close(context.Background(), "BTC")
+	_, err = pm.Close(context.Background(), "BTC")
 	require.Error(t, err)
 }

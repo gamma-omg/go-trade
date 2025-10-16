@@ -1,4 +1,4 @@
-package emulator
+package agent
 
 import (
 	"bytes"
@@ -6,19 +6,20 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/gamma-omg/trading-bot/internal/market"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestWrite(t *testing.T) {
-	r := newJsonReportBuilder(slog.New(slog.NewTextHandler(io.Discard, nil)))
-	r.SubmitDeal(Deal{
+	r := NewJsonReportBuilder(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	r.SubmitDeal(market.Deal{
 		Symbol: "BTC",
 		Spend:  decimal.NewFromInt(100),
 		Gain:   decimal.NewFromInt(120),
 	})
-	r.SubmitDeal(Deal{
+	r.SubmitDeal(market.Deal{
 		Symbol: "ETH",
 		Spend:  decimal.NewFromInt(1000),
 		Gain:   decimal.NewFromInt(1200),
@@ -48,7 +49,7 @@ func TestWrite(t *testing.T) {
 }
 
 func TestWrite_emptyReport(t *testing.T) {
-	r := newJsonReportBuilder(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	r := NewJsonReportBuilder(slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	var buff bytes.Buffer
 	err := r.Write(&buff)
@@ -58,8 +59,8 @@ func TestWrite_emptyReport(t *testing.T) {
 }
 
 func TestSubmitDeal_divideByZero(t *testing.T) {
-	r := newJsonReportBuilder(slog.New(slog.NewTextHandler(io.Discard, nil)))
-	r.SubmitDeal(Deal{
+	r := NewJsonReportBuilder(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	r.SubmitDeal(market.Deal{
 		Symbol: "BTC",
 		Gain:   decimal.NewFromInt(100),
 		Spend:  decimal.NewFromInt(0),

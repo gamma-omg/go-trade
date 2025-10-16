@@ -15,10 +15,11 @@ import (
 
 type mockBarsSource struct {
 	bars chan market.Bar
+	errs chan error
 }
 
-func (m *mockBarsSource) GetBars(symbol string) (<-chan market.Bar, error) {
-	return m.bars, nil
+func (m *mockBarsSource) GetBars(ctx context.Context, symbol string) (<-chan market.Bar, <-chan error) {
+	return m.bars, m.errs
 }
 
 type mockTradingStrategy struct {
@@ -107,7 +108,10 @@ func TestAgentRun(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	src := mockBarsSource{bars: make(chan market.Bar, 3)}
+	src := mockBarsSource{
+		bars: make(chan market.Bar, 3),
+		errs: make(chan error, 1),
+	}
 	str := mockTradingStrategy{}
 	a := TradingAgent{
 		log:  slog.New(slog.NewTextHandler(io.Discard, nil)),

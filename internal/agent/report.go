@@ -1,14 +1,14 @@
-package emulator
+package agent
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
-	"os"
 	"sync"
 	"time"
 
+	"github.com/gamma-omg/trading-bot/internal/market"
 	"github.com/shopspring/decimal"
 )
 
@@ -34,7 +34,7 @@ type JsonDeal struct {
 	GainPct  float64   `json:"gain_pct,omitempty"`
 }
 
-func newJsonReportBuilder(log *slog.Logger) *jsonReportBuilder {
+func NewJsonReportBuilder(log *slog.Logger) *jsonReportBuilder {
 	return &jsonReportBuilder{
 		log: log,
 		report: JsonReport{
@@ -43,7 +43,7 @@ func newJsonReportBuilder(log *slog.Logger) *jsonReportBuilder {
 	}
 }
 
-func (r *jsonReportBuilder) SubmitDeal(d Deal) {
+func (r *jsonReportBuilder) SubmitDeal(d market.Deal) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -87,18 +87,4 @@ func (r *jsonReportBuilder) Write(w io.Writer) error {
 	}
 
 	return nil
-}
-
-func (r *jsonReportBuilder) WriteToFile(path string) (err error) {
-	f, err := os.Create(path)
-	if err != nil {
-		return fmt.Errorf("failed to write report: %w", err)
-	}
-	defer func() {
-		if cerr := f.Close(); err != nil {
-			err = cerr
-		}
-	}()
-
-	return r.Write(f)
 }

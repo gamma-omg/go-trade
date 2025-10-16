@@ -22,3 +22,14 @@ type Position struct {
 	Price      decimal.Decimal
 	OpenTime   time.Time
 }
+
+type Deal struct {
+	Symbol    string
+	BuyTime   time.Time
+	SellTime  time.Time
+	BuyPrice  decimal.Decimal
+	SellPrice decimal.Decimal
+	Qty       decimal.Decimal
+	Spend     decimal.Decimal
+	Gain      decimal.Decimal
+}

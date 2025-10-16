@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"slices"
 	"testing"
@@ -19,8 +20,8 @@ type mockAccount struct {
 	balance int
 }
 
-func (a *mockAccount) GetBalance() decimal.Decimal {
-	return decimal.NewFromInt(int64(a.balance))
+func (a *mockAccount) GetBalance() (decimal.Decimal, error) {
+	return decimal.NewFromInt(int64(a.balance)), nil
 }
 
 type mockPositionScaler struct {
@@ -42,12 +43,12 @@ func (pm *mockPositionManager) Open(_ context.Context, symbol string, size decim
 	return pos, nil
 }
 
-func (pm *mockPositionManager) Close(_ context.Context, symbol string) error {
+func (pm *mockPositionManager) Close(_ context.Context, symbol string) (market.Deal, error) {
 	pm.positions = slices.DeleteFunc(pm.positions, func(p market.Position) bool {
 		return p.Symbol == symbol
 	})
 
-	return nil
+	return market.Deal{}, nil
 }
 
 type mockIndicator struct {
@@ -60,6 +61,18 @@ func (m *mockIndicator) GetSignal() (indicator.Signal, error) {
 		Act:        m.act,
 		Confidence: m.confidence,
 	}, nil
+}
+
+type mockReport struct {
+	deals []market.Deal
+}
+
+func (m *mockReport) SubmitDeal(d market.Deal) {
+	m.deals = append(m.deals, d)
+}
+
+func (m *mockReport) Write(w io.Writer) error {
+	return nil
 }
 
 func TestStrategyRun(t *testing.T) {
@@ -112,6 +125,7 @@ func TestStrategyRun(t *testing.T) {
 				posScaler: &scaler,
 				position:  c.position,
 				acc:       &mockAccount{balance: int(cfg.Budget)},
+				report:    &mockReport{},
 				indicator: &mockIndicator{
 					act:        c.act,
 					confidence: c.confidence,
@@ -156,14 +170,17 @@ func TestSell(t *testing.T) {
 	posMan := mockPositionManager{
 		positions: []market.Position{p, o},
 	}
+	r := mockReport{}
 	s := TradingStrategy{
 		posMan:   &posMan,
 		position: &p,
+		report:   &r,
 	}
 
 	require.NoError(t, s.sell(context.Background(), 0.6))
 
 	assert.ElementsMatch(t, []market.Position{o}, posMan.positions)
+	assert.Len(t, r.deals, 1)
 	assert.Nil(t, s.position)
 }
 
@@ -201,7 +218,8 @@ func TestGetAvailableFunds(t *testing.T) {
 				position: p,
 			}
 
-			available := s.getAvailableFunds()
+			available, err := s.getAvailableFunds()
+			require.NoError(t, err)
 			assert.Equal(t, decimal.NewFromInt(c.available), available)
 		})
 	}

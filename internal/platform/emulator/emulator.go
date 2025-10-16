@@ -2,13 +2,12 @@ package emulator
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
-	"sync"
 
 	"github.com/gamma-omg/trading-bot/internal/config"
 	"github.com/gamma-omg/trading-bot/internal/market"
+	"github.com/gamma-omg/trading-bot/internal/platform/common"
 	"github.com/shopspring/decimal"
 )
 
@@ -16,16 +15,14 @@ type TradingEmulator struct {
 	cfg     config.Emulator
 	readers map[string]*barReader
 	bars    map[string]chan market.Bar
-	prices  *defaultPriceProvider
-	report  *jsonReportBuilder
+	prices  *common.DefaultPriceProvider
 	Acc     *defaultAccount
 	PosMan  positionManager
 }
 
 func NewTradingEmulator(log *slog.Logger, cfg config.Emulator) (*TradingEmulator, error) {
-	prices := newDefaultPriceProvider()
+	prices := common.NewDefaultPriceProvider()
 	comission := newFixedRateComission(cfg.BuyComission, cfg.SellComission)
-	report := newJsonReportBuilder(log)
 	acc := &defaultAccount{balance: decimal.NewFromInt(int64(cfg.Balance))}
 
 	emu := &TradingEmulator{
@@ -33,9 +30,8 @@ func NewTradingEmulator(log *slog.Logger, cfg config.Emulator) (*TradingEmulator
 		readers: make(map[string]*barReader),
 		bars:    make(map[string]chan market.Bar),
 		prices:  prices,
-		report:  report,
 		Acc:     acc,
-		PosMan:  *newPositionManager(log, comission, prices, report, acc),
+		PosMan:  *newPositionManager(log, comission, prices, acc),
 	}
 
 	for symbol, path := range cfg.Data {
@@ -53,56 +49,41 @@ func NewTradingEmulator(log *slog.Logger, cfg config.Emulator) (*TradingEmulator
 	return emu, nil
 }
 
-func (e *TradingEmulator) GetBars(symbol string) (<-chan market.Bar, error) {
-	bars, ok := e.bars[symbol]
-	if !ok {
-		return nil, fmt.Errorf("unknown symbol: %s", symbol)
-	}
-
-	return bars, nil
-}
-
-func (e *TradingEmulator) Run(ctx context.Context) error {
-	errCh := make(chan error, len(e.readers))
-
-	var wg sync.WaitGroup
-	for symbol, rdr := range e.readers {
-		wg.Add(1)
-		dst := e.bars[symbol]
-
-		go func(symbol string, rdr *barReader, dst chan<- market.Bar) {
-			defer wg.Done()
-			defer close(dst)
-
-			for b := range rdr.Read(ctx) {
-				if b.err != nil {
-					errCh <- b.err
-					break
-				}
-
-				e.prices.UpdatePrice(symbol, b.bar)
-				dst <- b.bar
-			}
-		}(symbol, rdr, dst)
-	}
-
+func (e *TradingEmulator) GetBars(ctx context.Context, symbol string) (<-chan market.Bar, <-chan error) {
+	bars := make(chan market.Bar, 64)
+	errs := make(chan error, 1)
 	go func() {
-		wg.Wait()
-		close(errCh)
+		defer close(bars)
+		defer close(errs)
+
+		rdr, ok := e.readers[symbol]
+		if !ok {
+			errs <- fmt.Errorf("failed to find reader for symbol: %s", symbol)
+			return
+		}
+
+		for r := range rdr.Read(ctx) {
+			if r.err != nil {
+				errs <- r.err
+				continue
+			}
+
+			e.prices.UpdatePrice(symbol, r.bar)
+			bars <- r.bar
+		}
 	}()
 
-	var errs []error
-	for e := range errCh {
-		errs = append(errs, e)
-	}
+	return bars, errs
+}
 
-	if len(errs) > 0 {
-		return errors.Join(errs...)
-	}
+func (e *TradingEmulator) Open(ctx context.Context, symbol string, size decimal.Decimal) (market.Position, error) {
+	return e.PosMan.Open(ctx, symbol, size)
+}
 
-	if err := e.report.WriteToFile(e.cfg.Report); err != nil {
-		return fmt.Errorf("failed to create trading report: %w", err)
-	}
+func (e *TradingEmulator) Close(ctx context.Context, symbol string) (market.Deal, error) {
+	return e.PosMan.Close(ctx, symbol)
+}
 
-	return nil
+func (e *TradingEmulator) GetBalance() (decimal.Decimal, error) {
+	return e.Acc.GetBalance(), nil
 }

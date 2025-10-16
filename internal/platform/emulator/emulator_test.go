@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"log/slog"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -14,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRun(t *testing.T) {
+func TestGetBars(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -31,26 +30,27 @@ func TestRun(t *testing.T) {
 		Data: map[string]string{
 			"BTC": f,
 		},
-		Start:  time.Unix(0, 0),
-		End:    time.Unix(0xfffffffffffffff, 0),
-		Report: filepath.Join(t.TempDir(), "report"),
+		Start: time.Unix(0, 0),
+		End:   time.Unix(0xfffffffffffffff, 0),
 	})
 	require.NoError(t, err)
 
-	barsCh, err := emu.GetBars("BTC")
-	require.NoError(t, err)
+	barsCh, errCh := emu.GetBars(ctx, "BTC")
 
 	done := make(chan struct{})
+	var errs []error
 	var bars []market.Bar
 	go func() {
 		defer close(done)
 		for b := range barsCh {
 			bars = append(bars, b)
 		}
+		for err := range errCh {
+			errs = append(errs, err)
+		}
 	}()
 
-	require.NoError(t, emu.Run(ctx))
-
 	<-done
+	assert.Len(t, errs, 0)
 	assert.Equal(t, 6, len(bars))
 }

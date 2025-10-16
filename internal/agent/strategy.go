@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 
 	"github.com/gamma-omg/trading-bot/internal/config"
@@ -17,7 +18,7 @@ type tradingIndicator interface {
 
 type positionManager interface {
 	Open(ctx context.Context, symbol string, size decimal.Decimal) (market.Position, error)
-	Close(ctx context.Context, symbol string) error
+	Close(ctx context.Context, symbol string) (market.Deal, error)
 }
 
 type positionScaler interface {
@@ -25,7 +26,12 @@ type positionScaler interface {
 }
 
 type account interface {
-	GetBalance() decimal.Decimal
+	GetBalance() (decimal.Decimal, error)
+}
+
+type reportBuilder interface {
+	SubmitDeal(d market.Deal)
+	Write(w io.Writer) error
 }
 
 type TradingStrategy struct {
@@ -36,10 +42,11 @@ type TradingStrategy struct {
 	posMan    positionManager
 	posScaler positionScaler
 	acc       account
+	report    reportBuilder
 	position  *market.Position
 }
 
-func newTradingStrategy(symbol string, cfg config.Strategy, indicator tradingIndicator, positionManager positionManager, acc account, log *slog.Logger) *TradingStrategy {
+func newTradingStrategy(symbol string, cfg config.Strategy, indicator tradingIndicator, positionManager positionManager, acc account, report reportBuilder, log *slog.Logger) *TradingStrategy {
 	return &TradingStrategy{
 		log:       log,
 		symbol:    symbol,
@@ -48,6 +55,7 @@ func newTradingStrategy(symbol string, cfg config.Strategy, indicator tradingInd
 		posScaler: &market.LinearScaler{MaxScale: cfg.PositionScale},
 		posMan:    positionManager,
 		acc:       acc,
+		report:    report,
 		position:  nil,
 	}
 }
@@ -78,7 +86,11 @@ func (ts *TradingStrategy) Run(ctx context.Context) error {
 }
 
 func (ts *TradingStrategy) buy(ctx context.Context, confidence float64) error {
-	funds := ts.getAvailableFunds()
+	funds, err := ts.getAvailableFunds()
+	if err != nil {
+		return fmt.Errorf("failed to get available funds: %w", err)
+	}
+
 	size := ts.posScaler.GetSize(funds, confidence)
 	p, err := ts.posMan.Open(ctx, ts.symbol, size)
 	if err != nil {
@@ -90,19 +102,26 @@ func (ts *TradingStrategy) buy(ctx context.Context, confidence float64) error {
 }
 
 func (ts *TradingStrategy) sell(ctx context.Context, _ float64) error {
-	if err := ts.posMan.Close(ctx, ts.position.Symbol); err != nil {
+	d, err := ts.posMan.Close(ctx, ts.position.Symbol)
+	if err != nil {
 		return fmt.Errorf("failed to sell position: %w", err)
 	}
 
+	ts.report.SubmitDeal(d)
 	ts.position = nil
 	return nil
 }
 
-func (ts *TradingStrategy) getAvailableFunds() decimal.Decimal {
+func (ts *TradingStrategy) getAvailableFunds() (decimal.Decimal, error) {
 	available := decimal.NewFromInt(ts.cfg.Budget)
 	if ts.position != nil {
 		available = decimal.Max(decimal.NewFromInt(0), available.Sub(ts.position.EntryPrice))
 	}
 
-	return decimal.Min(ts.acc.GetBalance(), available)
+	balance, err := ts.acc.GetBalance()
+	if err != nil {
+		return decimal.Decimal{}, fmt.Errorf("failed to get current balance: %w", err)
+	}
+
+	return decimal.Min(balance, available), nil
 }
