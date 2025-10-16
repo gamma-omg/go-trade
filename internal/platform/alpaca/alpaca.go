@@ -3,6 +3,7 @@ package alpaca
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
@@ -117,7 +118,11 @@ func (ap *AlpacaPlatform) Open(ctx context.Context, asset *market.Asset, size de
 
 func (ap *AlpacaPlatform) Close(ctx context.Context, p *market.Position) (d market.Deal, err error) {
 	r := alpaca.ClosePositionRequest{Percentage: decimal.NewFromInt(100)}
-	ord, err := ap.client.ClosePosition(p.Asset.Symbol, r)
+
+	// for some reason in Alpaca we buy BTC/USD but sell BTCUSD symbol
+	sym := strings.Replace(p.Asset.Symbol, "/", "", -1)
+
+	ord, err := ap.client.ClosePosition(sym, r)
 	if err != nil {
 		err = fmt.Errorf("failed to close position: %w", err)
 		return
