@@ -17,8 +17,8 @@ type tradingIndicator interface {
 }
 
 type positionManager interface {
-	Open(ctx context.Context, symbol string, size decimal.Decimal) (market.Position, error)
-	Close(ctx context.Context, symbol string) (market.Deal, error)
+	Open(ctx context.Context, symbol string, size decimal.Decimal) (*market.Position, error)
+	Close(ctx context.Context, p *market.Position) (market.Deal, error)
 }
 
 type positionScaler interface {
@@ -97,12 +97,12 @@ func (ts *TradingStrategy) buy(ctx context.Context, confidence float64) error {
 		return fmt.Errorf("failed to open position: %w", err)
 	}
 
-	ts.position = &p
+	ts.position = p
 	return nil
 }
 
 func (ts *TradingStrategy) sell(ctx context.Context, _ float64) error {
-	d, err := ts.posMan.Close(ctx, ts.position.Symbol)
+	d, err := ts.posMan.Close(ctx, ts.position)
 	if err != nil {
 		return fmt.Errorf("failed to sell position: %w", err)
 	}

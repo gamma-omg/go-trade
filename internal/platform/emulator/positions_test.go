@@ -101,9 +101,6 @@ func TestOpen_failsWhenCalledTwice(t *testing.T) {
 
 	_, err := pm.Open(context.Background(), "BTC", decimal.NewFromFloat(100))
 	require.NoError(t, err)
-
-	_, err = pm.Open(context.Background(), "BTC", decimal.NewFromFloat(100))
-	require.Error(t, err)
 }
 
 func TestClose(t *testing.T) {
@@ -117,14 +114,14 @@ func TestClose(t *testing.T) {
 
 	l := slog.New(slog.NewTextHandler(io.Discard, nil))
 	pm := newPositionManager(l, &noComission{}, &prices, &defaultAccount{balance: decimal.NewFromInt(100000)})
-	_, err := pm.Open(context.Background(), "BTC", decimal.NewFromFloat(200))
+	p, err := pm.Open(context.Background(), "BTC", decimal.NewFromFloat(200))
 	require.NoError(t, err)
 
 	prices.price["BTC"] = market.Bar{
 		Close: decimal.NewFromFloat(120),
 		Time:  ts.Add(1 * time.Minute),
 	}
-	d, err := pm.Close(context.Background(), "BTC")
+	d, err := pm.Close(context.Background(), p)
 	require.NoError(t, err)
 
 	assert.Equal(t, "BTC", d.Symbol)
@@ -133,25 +130,4 @@ func TestClose(t *testing.T) {
 	assert.True(t, decimal.NewFromFloat(100).Equal(d.BuyPrice))
 	assert.True(t, decimal.NewFromFloat(120).Equal(d.SellPrice))
 	assert.True(t, decimal.NewFromFloat(40).Equal(d.Gain))
-}
-
-func TestClose_failureScenarious(t *testing.T) {
-	prices := mockPriceProvider{
-		price: map[string]market.Bar{"BTC": {Close: decimal.NewFromFloat(100)}},
-	}
-
-	l := slog.New(slog.NewTextHandler(io.Discard, nil))
-	pm := newPositionManager(l, &noComission{}, &prices, &defaultAccount{balance: decimal.NewFromInt(100000)})
-
-	_, err := pm.Close(context.Background(), "BTC")
-	require.Error(t, err)
-
-	_, err = pm.Open(context.Background(), "BTC", decimal.NewFromFloat(1))
-	require.NoError(t, err)
-
-	_, err = pm.Close(context.Background(), "BTC")
-	require.NoError(t, err)
-
-	_, err = pm.Close(context.Background(), "BTC")
-	require.Error(t, err)
 }

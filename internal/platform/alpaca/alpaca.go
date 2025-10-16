@@ -3,7 +3,6 @@ package alpaca
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
@@ -16,11 +15,9 @@ import (
 )
 
 type AlpacaPlatform struct {
-	cfg       config.Alpaca
-	client    *alpaca.Client
-	prices    *common.DefaultPriceProvider
-	positions map[string]market.Position
-	mu        sync.RWMutex
+	cfg    config.Alpaca
+	client *alpaca.Client
+	prices *common.DefaultPriceProvider
 }
 
 func NewAlpacaPlatform(cfg config.Alpaca) (*AlpacaPlatform, error) {
@@ -82,7 +79,7 @@ func (ap *AlpacaPlatform) GetBars(ctx context.Context, symbol string) (<-chan ma
 	return bars, errs
 }
 
-func (ap *AlpacaPlatform) Open(ctx context.Context, symbol string, size decimal.Decimal) (p market.Position, err error) {
+func (ap *AlpacaPlatform) Open(ctx context.Context, symbol string, size decimal.Decimal) (p *market.Position, err error) {
 	bar, err := ap.prices.GetLastBar(symbol)
 	if err != nil {
 		err = fmt.Errorf("failed to get symbold price: %w", err)
@@ -111,29 +108,23 @@ func (ap *AlpacaPlatform) Open(ctx context.Context, symbol string, size decimal.
 		return
 	}
 
-	p = market.Position{
+	p = &market.Position{
 		Symbol:     symbol,
 		EntryPrice: *ord.FilledAvgPrice,
 		OpenTime:   *ord.FilledAt,
 		Qty:        ord.FilledQty,
 		Price:      ord.FilledQty.Mul(*ord.FilledAvgPrice),
 	}
-	ap.setOpenPosition(p)
 
 	return
 }
 
-func (ap *AlpacaPlatform) Close(ctx context.Context, symbol string) (d market.Deal, err error) {
+func (ap *AlpacaPlatform) Close(ctx context.Context, p *market.Position) (d market.Deal, err error) {
 	r := alpaca.ClosePositionRequest{Percentage: decimal.NewFromInt(100)}
-	ord, err := ap.client.ClosePosition(symbol, r)
+	ord, err := ap.client.ClosePosition(p.Symbol, r)
 	if err != nil {
 		err = fmt.Errorf("failed to close position: %w", err)
 		return
-	}
-
-	p, err := ap.getOpenPosition(symbol)
-	if err != nil {
-		err = fmt.Errorf("failed to find open position: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -148,7 +139,7 @@ func (ap *AlpacaPlatform) Close(ctx context.Context, symbol string) (d market.De
 	before := p.Price
 	after := ord.FilledAvgPrice.Mul(ord.FilledQty)
 	d = market.Deal{
-		Symbol:    symbol,
+		Symbol:    p.Symbol,
 		SellTime:  *ord.FilledAt,
 		SellPrice: *ord.FilledAvgPrice,
 		Qty:       ord.FilledQty,
@@ -169,26 +160,6 @@ func (ap *AlpacaPlatform) GetBalance() (b decimal.Decimal, err error) {
 	}
 
 	b = acc.BuyingPower
-	return
-}
-
-func (ap *AlpacaPlatform) setOpenPosition(p market.Position) {
-	ap.mu.Lock()
-	defer ap.mu.Unlock()
-
-	ap.positions[p.Symbol] = p
-}
-
-func (ap *AlpacaPlatform) getOpenPosition(symbol string) (p market.Position, err error) {
-	ap.mu.RLock()
-	defer ap.mu.RUnlock()
-
-	p, ok := ap.positions[symbol]
-	if !ok {
-		err = fmt.Errorf("unable to find open position for symbol %s", symbol)
-		return
-	}
-
 	return
 }
 

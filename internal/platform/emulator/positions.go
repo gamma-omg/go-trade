@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"sync"
 
 	"github.com/gamma-omg/trading-bot/internal/market"
 	"github.com/shopspring/decimal"
@@ -26,11 +25,9 @@ type account interface {
 
 type positionManager struct {
 	log       *slog.Logger
-	positions map[string]market.Position
 	prices    priceProvider
 	comission comissionCharger
 	acc       account
-	mu        sync.Mutex
 }
 
 func newPositionManager(log *slog.Logger, comission comissionCharger, prices priceProvider, acc account) *positionManager {
@@ -39,19 +36,10 @@ func newPositionManager(log *slog.Logger, comission comissionCharger, prices pri
 		comission: comission,
 		prices:    prices,
 		acc:       acc,
-		positions: make(map[string]market.Position),
 	}
 }
 
-func (pm *positionManager) Open(ctx context.Context, symbol string, size decimal.Decimal) (p market.Position, err error) {
-	pm.mu.Lock()
-	defer pm.mu.Unlock()
-
-	if _, ok := pm.positions[symbol]; ok {
-		err = fmt.Errorf("position for %s is already open", symbol)
-		return
-	}
-
+func (pm *positionManager) Open(ctx context.Context, symbol string, size decimal.Decimal) (p *market.Position, err error) {
 	bar, err := pm.prices.GetLastBar(symbol)
 	if err != nil {
 		err = fmt.Errorf("cannot find buy price for %s: %w", symbol, err)
@@ -65,31 +53,21 @@ func (pm *positionManager) Open(ctx context.Context, symbol string, size decimal
 
 	price := size
 	size = pm.comission.ApplyOnBuy(size)
-	p = market.Position{
+	p = &market.Position{
 		Symbol:     symbol,
 		EntryPrice: bar.Close,
 		OpenTime:   bar.Time,
 		Qty:        size.Div(bar.Close),
 		Price:      price,
 	}
-	pm.positions[symbol] = p
 
 	return p, nil
 }
 
-func (pm *positionManager) Close(ctx context.Context, symbol string) (d market.Deal, err error) {
-	pm.mu.Lock()
-	defer pm.mu.Unlock()
-
-	p, ok := pm.positions[symbol]
-	if !ok {
-		err = fmt.Errorf("no open positions for symbol %s", symbol)
-		return
-	}
-
-	bar, err := pm.prices.GetLastBar(symbol)
+func (pm *positionManager) Close(ctx context.Context, p *market.Position) (d market.Deal, err error) {
+	bar, err := pm.prices.GetLastBar(p.Symbol)
 	if err != nil {
-		err = fmt.Errorf("cannot find sell price for %s: %w", symbol, err)
+		err = fmt.Errorf("cannot find sell price for %s: %w", p.Symbol, err)
 		return
 	}
 
@@ -100,10 +78,8 @@ func (pm *positionManager) Close(ctx context.Context, symbol string) (d market.D
 		return
 	}
 
-	delete(pm.positions, symbol)
-
 	d = market.Deal{
-		Symbol:    symbol,
+		Symbol:    p.Symbol,
 		SellTime:  bar.Time,
 		SellPrice: bar.Close,
 		BuyTime:   p.OpenTime,

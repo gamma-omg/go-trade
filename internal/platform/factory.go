@@ -14,8 +14,8 @@ import (
 
 type tradingPlatform interface {
 	GetBars(ctx context.Context, symbol string) (<-chan market.Bar, <-chan error)
-	Open(ctx context.Context, symbol string, size decimal.Decimal) (market.Position, error)
-	Close(ctx context.Context, symbol string) (market.Deal, error)
+	Open(ctx context.Context, symbol string, size decimal.Decimal) (*market.Position, error)
+	Close(ctx context.Context, p *market.Position) (market.Deal, error)
 	GetBalance() (decimal.Decimal, error)
 }
 

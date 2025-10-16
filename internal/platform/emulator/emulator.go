@@ -76,12 +76,12 @@ func (e *TradingEmulator) GetBars(ctx context.Context, symbol string) (<-chan ma
 	return bars, errs
 }
 
-func (e *TradingEmulator) Open(ctx context.Context, symbol string, size decimal.Decimal) (market.Position, error) {
+func (e *TradingEmulator) Open(ctx context.Context, symbol string, size decimal.Decimal) (*market.Position, error) {
 	return e.PosMan.Open(ctx, symbol, size)
 }
 
-func (e *TradingEmulator) Close(ctx context.Context, symbol string) (market.Deal, error) {
-	return e.PosMan.Close(ctx, symbol)
+func (e *TradingEmulator) Close(ctx context.Context, p *market.Position) (market.Deal, error) {
+	return e.PosMan.Close(ctx, p)
 }
 
 func (e *TradingEmulator) GetBalance() (decimal.Decimal, error) {

@@ -33,19 +33,19 @@ func (s *mockPositionScaler) GetSize(budget decimal.Decimal, confidence float64)
 }
 
 type mockPositionManager struct {
-	positions []market.Position
+	positions []*market.Position
 	qtyFunc   func(size decimal.Decimal, symbol string) decimal.Decimal
 }
 
-func (pm *mockPositionManager) Open(_ context.Context, symbol string, size decimal.Decimal) (market.Position, error) {
-	pos := market.Position{Qty: pm.qtyFunc(size, symbol)}
+func (pm *mockPositionManager) Open(_ context.Context, symbol string, size decimal.Decimal) (*market.Position, error) {
+	pos := &market.Position{Qty: pm.qtyFunc(size, symbol)}
 	pm.positions = append(pm.positions, pos)
 	return pos, nil
 }
 
-func (pm *mockPositionManager) Close(_ context.Context, symbol string) (market.Deal, error) {
-	pm.positions = slices.DeleteFunc(pm.positions, func(p market.Position) bool {
-		return p.Symbol == symbol
+func (pm *mockPositionManager) Close(_ context.Context, p *market.Position) (market.Deal, error) {
+	pm.positions = slices.DeleteFunc(pm.positions, func(x *market.Position) bool {
+		return x.Symbol == p.Symbol
 	})
 
 	return market.Deal{}, nil
@@ -102,12 +102,12 @@ func TestStrategyRun(t *testing.T) {
 				return size
 			}}
 			if c.position != nil {
-				posMan.positions = append(posMan.positions, *c.position)
+				posMan.positions = append(posMan.positions, c.position)
 			}
 
 			i := 0
 			for len(posMan.positions) < c.initialPos {
-				posMan.positions = append(posMan.positions, market.Position{
+				posMan.positions = append(posMan.positions, &market.Position{
 					Symbol: fmt.Sprintf("%d", i),
 				})
 			}
@@ -165,21 +165,21 @@ func TestBuy(t *testing.T) {
 }
 
 func TestSell(t *testing.T) {
-	p := market.Position{Symbol: "p"}
-	o := market.Position{Symbol: "o"}
-	posMan := mockPositionManager{
-		positions: []market.Position{p, o},
+	p := &market.Position{Symbol: "p"}
+	o := &market.Position{Symbol: "o"}
+	posMan := &mockPositionManager{
+		positions: []*market.Position{p, o},
 	}
-	r := mockReport{}
+	r := &mockReport{}
 	s := TradingStrategy{
-		posMan:   &posMan,
-		position: &p,
-		report:   &r,
+		posMan:   posMan,
+		position: p,
+		report:   r,
 	}
 
 	require.NoError(t, s.sell(context.Background(), 0.6))
 
-	assert.ElementsMatch(t, []market.Position{o}, posMan.positions)
+	assert.ElementsMatch(t, []*market.Position{o}, posMan.positions)
 	assert.Len(t, r.deals, 1)
 	assert.Nil(t, s.position)
 }
