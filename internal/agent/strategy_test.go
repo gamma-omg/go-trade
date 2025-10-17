@@ -129,14 +129,15 @@ func TestStrategyRun(t *testing.T) {
 			}
 
 			s := TradingStrategy{
-				asset:     a,
-				log:       slog.Default(),
-				cfg:       cfg,
-				posMan:    &posMan,
-				posScaler: &scaler,
-				position:  c.position,
-				acc:       &mockAccount{balance: int(cfg.Budget)},
-				report:    &mockReport{},
+				asset:        a,
+				log:          slog.Default(),
+				cfg:          cfg,
+				posMan:       &posMan,
+				posScaler:    &scaler,
+				posValidator: &mockPositionValidator{needClose: false},
+				position:     c.position,
+				acc:          &mockAccount{balance: int(cfg.Budget)},
+				report:       &mockReport{},
 				indicator: &mockIndicator{
 					act:        c.act,
 					confidence: c.confidence,
@@ -159,7 +160,7 @@ func TestRun_closesInvalidPosition(t *testing.T) {
 	posMan := mockPositionManager{qtyFunc: func(size decimal.Decimal, symbol string) decimal.Decimal {
 		return size
 	}}
-	posMan.positions = []*market.Position{&market.Position{Asset: asset}}
+	posMan.positions = []*market.Position{{Asset: asset}}
 	scaler := mockPositionScaler{
 		scaleFunc: func(budget decimal.Decimal, confidence float64) decimal.Decimal {
 			return budget
