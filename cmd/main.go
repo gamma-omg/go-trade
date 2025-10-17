@@ -8,25 +8,24 @@ import (
 
 	"github.com/gamma-omg/trading-bot/internal/agent"
 	"github.com/gamma-omg/trading-bot/internal/config"
-	"github.com/gamma-omg/trading-bot/internal/platform"
 )
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cfg, err := config.ReadFromFile(os.Getenv("CONFIG"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	logger := slog.Default()
-	p, err := platform.Create(logger, *cfg)
+
+	r := agent.NewJsonReportBuilder(logger)
+	a, err := agent.NewTradingAgent(logger, *cfg, r)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	r := agent.NewJsonReportBuilder(logger)
-	a := agent.NewTradingAgent(logger, *cfg, p, r)
 	a.Run(ctx)
 }

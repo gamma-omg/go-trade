@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/gamma-omg/trading-bot/internal/config"
-	"github.com/gamma-omg/trading-bot/internal/indicator"
 	"github.com/gamma-omg/trading-bot/internal/market"
 )
 
@@ -36,8 +35,13 @@ type TradingAgent struct {
 	report  reportBuilder
 }
 
-func NewTradingAgent(log *slog.Logger, cfg config.Config, platform tradingPlatform, report reportBuilder) *TradingAgent {
-	return &TradingAgent{
+func NewTradingAgent(log *slog.Logger, cfg config.Config, report reportBuilder) (*TradingAgent, error) {
+	platform, err := createPlatform(log, cfg.PlatformRef)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create trading platform: %w", err)
+	}
+
+	a := &TradingAgent{
 		log:    log,
 		cfg:    cfg,
 		bars:   platform,
@@ -55,33 +59,7 @@ func NewTradingAgent(log *slog.Logger, cfg config.Config, platform tradingPlatfo
 			return newTradingStrategy(asset, cfg, ind, validator, platform, platform, report, log), nil
 		},
 	}
-}
-
-func createIndicator(ref config.IndicatorReference, asset *market.Asset) (tradingIndicator, error) {
-	macd, ok := ref.Indicator.(config.MACD)
-	if ok {
-		return indicator.NewMACD(macd, asset), nil
-	}
-
-	ensemble, ok := ref.Indicator.(config.Ensemble)
-	if ok {
-		children := make([]indicator.WeightedIndicator, len(ensemble.Indicators))
-		for i, c := range ensemble.Indicators {
-			child, err := createIndicator(c.IndRef, asset)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create child indicator: %w", err)
-			}
-
-			children[i] = indicator.WeightedIndicator{
-				Weight:    c.Weight,
-				Indicator: child,
-			}
-		}
-
-		return &indicator.EnsembleIndicator{Children: children}, nil
-	}
-
-	return nil, fmt.Errorf("unknown indicator: %v", ref)
+	return a, nil
 }
 
 func (a *TradingAgent) Run(ctx context.Context) error {
