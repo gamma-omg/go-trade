@@ -116,7 +116,7 @@ func TestAgentRun(t *testing.T) {
 	a := TradingAgent{
 		log:  slog.New(slog.NewTextHandler(io.Discard, nil)),
 		bars: &src,
-		factory: func(symbol string, cfg config.Strategy, asset *market.Asset) (tradingStrategy, error) {
+		strategyFactory: func(cfg config.Strategy, asset *market.Asset) (tradingStrategy, error) {
 			return &str, nil
 		},
 		cfg: config.Config{

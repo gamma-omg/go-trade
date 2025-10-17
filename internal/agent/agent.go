@@ -2,7 +2,9 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"sync"
@@ -25,14 +27,14 @@ type tradingStrategy interface {
 	Run(ctx context.Context) error
 }
 
-type tradingStrategyFactory func(symbol string, cfg config.Strategy, asset *market.Asset) (tradingStrategy, error)
+type tradingStrategyFactory func(cfg config.Strategy, asset *market.Asset) (tradingStrategy, error)
 
 type TradingAgent struct {
-	log     *slog.Logger
-	cfg     config.Config
-	bars    barsSource
-	factory tradingStrategyFactory
-	report  reportBuilder
+	log             *slog.Logger
+	cfg             config.Config
+	bars            barsSource
+	strategyFactory tradingStrategyFactory
+	report          reportBuilder
 }
 
 func NewTradingAgent(log *slog.Logger, cfg config.Config, report reportBuilder) (*TradingAgent, error) {
@@ -46,10 +48,10 @@ func NewTradingAgent(log *slog.Logger, cfg config.Config, report reportBuilder) 
 		cfg:    cfg,
 		bars:   platform,
 		report: report,
-		factory: func(symbol string, cfg config.Strategy, asset *market.Asset) (tradingStrategy, error) {
+		strategyFactory: func(cfg config.Strategy, asset *market.Asset) (tradingStrategy, error) {
 			ind, err := createIndicator(cfg.IndRef, asset)
 			if err != nil {
-				return nil, fmt.Errorf("failed to creat trading strategy for symbol %s: %w", symbol, err)
+				return nil, fmt.Errorf("failed to creat trading strategy for symbol %s: %w", asset.Symbol, err)
 			}
 
 			validator := &defaultPositionValidator{
@@ -65,6 +67,8 @@ func NewTradingAgent(log *slog.Logger, cfg config.Config, report reportBuilder) 
 func (a *TradingAgent) Run(ctx context.Context) error {
 	a.log.Info("starting agent")
 
+	errCh := make(chan error, len(a.cfg.Strategies))
+
 	var wg sync.WaitGroup
 	for symbol, cfg := range a.cfg.Strategies {
 		wg.Add(1)
@@ -72,10 +76,27 @@ func (a *TradingAgent) Run(ctx context.Context) error {
 			defer wg.Done()
 
 			asset := market.NewAsset(symbol, cfg.MarketBuffer)
-			s, err := a.factory(symbol, cfg, asset)
+			s, err := a.strategyFactory(cfg, asset)
 			if err != nil {
-				a.log.Error("failed to run strategy for symbol", slog.Any("error", err), slog.String("symbol", symbol))
+				errCh <- fmt.Errorf("failed to create strategy for symbol %s: %w", symbol, err)
 				return
+			}
+
+			barsDump := NewCsvBarsDump(io.Discard)
+			if cfg.DataDump != "" {
+				f, err := os.Create(cfg.DataDump)
+				if err != nil {
+					errCh <- fmt.Errorf("failed to open bars dump file for %s: %w", symbol, err)
+					return
+				}
+				barsDump = NewCsvBarsDump(f)
+
+				defer func() {
+					err := f.Close()
+					if err != nil {
+						errCh <- fmt.Errorf("failed to close bars dump file for %s: %w", symbol, err)
+					}
+				}()
 			}
 
 			bars, errs := a.bars.GetBars(ctx, symbol)
@@ -85,16 +106,19 @@ func (a *TradingAgent) Run(ctx context.Context) error {
 					return
 				case err, ok := <-errs:
 					if ok {
-						a.log.Error("error reading bars", slog.Any("error", err), slog.String("symbol", symbol))
+						errCh <- fmt.Errorf("error reading bars for %s: %w", symbol, err)
+						return
 					}
 				case bar, ok := <-bars:
 					if !ok {
 						return
 					}
 
+					barsDump.Dump(bar)
 					asset.Receive(bar)
 					if err := s.Run(ctx); err != nil {
-						a.log.Error(err.Error(), slog.String("symbol", symbol))
+						errCh <- fmt.Errorf("failed to run strategy for %s: %w", symbol, err)
+						return
 					}
 				}
 			}
@@ -102,6 +126,16 @@ func (a *TradingAgent) Run(ctx context.Context) error {
 	}
 
 	wg.Wait()
+	close(errCh)
+
+	var errs []error
+	for e := range errCh {
+		errs = append(errs, e)
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
 
 	if err := a.saveReport(); err != nil {
 		return fmt.Errorf("failed to save report: %w", err)

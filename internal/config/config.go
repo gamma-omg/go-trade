@@ -45,6 +45,7 @@ type Strategy struct {
 	PositionScale  float64            `yaml:"position_scale"`
 	MarketBuffer   int                `yaml:"market_buffer"`
 	IndRef         IndicatorReference `yaml:"indicator"`
+	DataDump       string             `yaml:"data_dump"`
 }
 
 type PlatformReference struct {
