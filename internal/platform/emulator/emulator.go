@@ -54,7 +54,11 @@ func (e *TradingEmulator) GetBars(ctx context.Context, symbol string) (<-chan ma
 			errs <- fmt.Errorf("failed to create bars reader: %w", err)
 			return
 		}
-		defer closer.Close()
+		defer func() {
+			if err := closer.Close(); err != nil {
+				errs <- fmt.Errorf("failed to close bar reader: %w", err)
+			}
+		}()
 
 		for r := range rdr.Read(ctx) {
 			if r.err != nil {
