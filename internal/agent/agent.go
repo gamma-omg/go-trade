@@ -8,14 +8,19 @@ import (
 	"log/slog"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/gamma-omg/trading-bot/internal/config"
 	"github.com/gamma-omg/trading-bot/internal/market"
 )
 
 type barsSource interface {
-	Prefetch(symbol string, count int) ([]market.Bar, error)
+	Prefetch(symbol string, count int) (<-chan market.Bar, error)
 	GetBars(ctx context.Context, symbol string) (<-chan market.Bar, <-chan error)
+}
+
+type barsAggregator interface {
+	Aggregate(bars <-chan market.Bar) <-chan market.Bar
 }
 
 type tradingPlatform interface {
@@ -106,6 +111,11 @@ func (a *TradingAgent) Run(ctx context.Context) error {
 				return
 			}
 
+			var agg barsAggregator = &market.IdentityAggregator{}
+			if cfg.AggregateBars > 1 {
+				agg = &market.IntervalAggregator{Interval: time.Duration(cfg.AggregateBars) * time.Minute}
+			}
+
 			if cfg.Prefetch > 0 {
 				initBars, err := a.bars.Prefetch(symbol, cfg.Prefetch)
 				if err != nil {
@@ -113,12 +123,14 @@ func (a *TradingAgent) Run(ctx context.Context) error {
 					return
 				}
 
-				for _, b := range initBars {
+				for b := range agg.Aggregate(initBars) {
 					asset.Receive(b)
 				}
 			}
 
 			bars, errs := a.bars.GetBars(ctx, symbol)
+			bars = agg.Aggregate(bars)
+
 			for {
 				select {
 				case <-ctx.Done():

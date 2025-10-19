@@ -46,6 +46,7 @@ type Strategy struct {
 	MarketBuffer   int                `yaml:"market_buffer"`
 	IndRef         IndicatorReference `yaml:"indicator"`
 	Prefetch       int                `yaml:"prefetch"`
+	AggregateBars  int                `yaml:"aggregate_bars"`
 	DataDump       string             `yaml:"data_dump"`
 	DebugLevel     DebugLevel         `yaml:"debug_level"`
 	DebugDir       string             `yaml:"debug_dir"`

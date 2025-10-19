@@ -46,7 +46,7 @@ func NewTradingEmulator(log *slog.Logger, cfg config.Emulator) (*TradingEmulator
 	return emu, nil
 }
 
-func (e *TradingEmulator) Prefetch(symbol string, count int) ([]market.Bar, error) {
+func (e *TradingEmulator) Prefetch(symbol string, count int) (<-chan market.Bar, error) {
 	return nil, errors.New("operation not supported")
 }
 

@@ -19,7 +19,7 @@ type mockBarsSource struct {
 	errs chan error
 }
 
-func (m *mockBarsSource) Prefetch(symbol string, count int) ([]market.Bar, error) {
+func (m *mockBarsSource) Prefetch(symbol string, count int) (<-chan market.Bar, error) {
 	return nil, errors.New("not supported")
 }
 
