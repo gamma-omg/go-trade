@@ -1,6 +1,7 @@
 package indicator
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -27,7 +28,7 @@ func (d *DebugPlot) Add(p *plot.Plot, height float64) {
 	d.heights = append(d.heights, height)
 }
 
-func (d *DebugPlot) Save(path string) error {
+func (d *DebugPlot) Save(path string) (err error) {
 	var axis []*plot.Axis
 	for _, p := range d.plots {
 		axis = append(axis, &p.X)
@@ -59,8 +60,13 @@ func (d *DebugPlot) Save(path string) error {
 
 	f, err := os.Create(path)
 	if err != nil {
-		return fmt.Errorf("failed tp create plot file: %w", err)
+		return fmt.Errorf("failed to create plot file: %w", err)
 	}
+	defer func() {
+		if cerr := f.Close(); cerr != nil {
+			err = errors.Join(err, fmt.Errorf("failed to close plot file: %w", err))
+		}
+	}()
 
 	png := vgimg.PngCanvas{Canvas: img}
 	if _, err := png.WriteTo(f); err != nil {
