@@ -12,11 +12,9 @@ import (
 )
 
 type TradingEmulator struct {
-	cfg     config.Emulator
-	readers map[string]*barReader
-	bars    map[string]chan market.Bar
-	Acc     *defaultAccount
-	PosMan  positionManager
+	cfg    config.Emulator
+	Acc    *defaultAccount
+	PosMan positionManager
 }
 
 func NewTradingEmulator(log *slog.Logger, cfg config.Emulator) (*TradingEmulator, error) {
@@ -24,23 +22,9 @@ func NewTradingEmulator(log *slog.Logger, cfg config.Emulator) (*TradingEmulator
 	acc := &defaultAccount{balance: decimal.NewFromInt(int64(cfg.Balance))}
 
 	emu := &TradingEmulator{
-		cfg:     cfg,
-		readers: make(map[string]*barReader),
-		bars:    make(map[string]chan market.Bar),
-		Acc:     acc,
-		PosMan:  *newPositionManager(log, comission, acc),
-	}
-
-	for symbol, path := range cfg.Data {
-		rdr, err := newBarReaderWithFilter(path, func(b market.Bar) bool {
-			return b.Time.After(cfg.Start) && b.Time.Before(cfg.End)
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create bars reader: %w", err)
-		}
-
-		emu.bars[symbol] = make(chan market.Bar)
-		emu.readers[symbol] = rdr
+		cfg:    cfg,
+		Acc:    acc,
+		PosMan: *newPositionManager(log, comission, acc),
 	}
 
 	return emu, nil
@@ -57,11 +41,20 @@ func (e *TradingEmulator) GetBars(ctx context.Context, symbol string) (<-chan ma
 		defer close(bars)
 		defer close(errs)
 
-		rdr, ok := e.readers[symbol]
+		path, ok := e.cfg.Data[symbol]
 		if !ok {
-			errs <- fmt.Errorf("failed to find reader for symbol: %s", symbol)
+			errs <- fmt.Errorf("no data file for symbol %s", symbol)
 			return
 		}
+
+		rdr, closer, err := newBarReaderWithFilter(path, func(b market.Bar) bool {
+			return b.Time.After(e.cfg.Start) && b.Time.Before(e.cfg.End)
+		})
+		if err != nil {
+			errs <- fmt.Errorf("failed to create bars reader: %w", err)
+			return
+		}
+		defer closer.Close()
 
 		for r := range rdr.Read(ctx) {
 			if r.err != nil {

@@ -26,21 +26,21 @@ type barReader struct {
 	filter barFilter
 }
 
-func newBarReader(dataPath string) (*barReader, error) {
+func newBarReader(dataPath string) (*barReader, io.Closer, error) {
 	return newBarReaderWithFilter(dataPath, func(b market.Bar) bool { return true })
 }
 
-func newBarReaderWithFilter(dataPath string, filter barFilter) (*barReader, error) {
+func newBarReaderWithFilter(dataPath string, filter barFilter) (*barReader, io.Closer, error) {
 	f, err := os.Open(dataPath)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create bar streamer: %w", err)
+		return nil, nil, fmt.Errorf("unable to create bar streamer: %w", err)
 	}
 
 	streamer := &barReader{
 		rdr:    csv.NewReader(bufio.NewReader(f)),
 		filter: filter,
 	}
-	return streamer, nil
+	return streamer, f, nil
 }
 
 func (b *barReader) Read(ctx context.Context) <-chan barReadResult {

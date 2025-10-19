@@ -29,8 +29,10 @@ func TestRead(t *testing.T) {
 
 	dataFile := writeCsv(t, "data", `timestamp,open,high,low,close,volume
 1460413380.0,421.07,521.07,321.06,121.06,1.192`)
-	br, err := newBarReader(dataFile)
+	br, closer, err := newBarReader(dataFile)
 	require.NoError(t, err)
+	require.NotNil(t, closer)
+	defer closer.Close()
 
 	bars := readBars(t, ctx, br)
 	assert.Equal(t, time.Unix(1460413380, 0), bars[0].Time)
@@ -53,10 +55,12 @@ func TestReadFilter(t *testing.T) {
 1758127500.0,115510,115510,115482,115493,1.05828858
 1758152940.0,116570,116577,116569,116574,1.60268598
 `)
-	br, err := newBarReaderWithFilter(dataFile, func(b market.Bar) bool {
+	br, closer, err := newBarReaderWithFilter(dataFile, func(b market.Bar) bool {
 		return b.Time.After(time.Unix(1437452040, 0)) && b.Time.Before(time.Unix(1758127500, 0))
 	})
 	require.NoError(t, err)
+	require.NotNil(t, closer)
+	defer closer.Close()
 
 	bars := readBars(t, ctx, br)
 	assert.Len(t, bars, 2)
