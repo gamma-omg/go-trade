@@ -72,14 +72,14 @@ func NewTradingAgent(log *slog.Logger, cfg config.Config, report reportBuilder) 
 	return a, nil
 }
 
-func (a *TradingAgent) Run(ctx context.Context) (e error) {
+func (a *TradingAgent) Run(ctx context.Context) error {
 	a.log.Info("starting agent")
 
 	grp, ctx := errgroup.WithContext(ctx)
 	for symbol, cfg := range a.cfg.Strategies {
 		symbol, cfg := symbol, cfg
 
-		grp.Go(func() error {
+		grp.Go(func() (err error) {
 			asset := market.NewAsset(symbol, cfg.MarketBuffer)
 			s, err := a.strategyFactory(cfg, asset)
 			if err != nil {
@@ -96,8 +96,8 @@ func (a *TradingAgent) Run(ctx context.Context) (e error) {
 			}
 			if closer != nil {
 				defer func() {
-					if err := closer.Close(); err != nil {
-						e = fmt.Errorf("failed to close bars dump for symbol %s: %w", symbol, err)
+					if cerr := closer.Close(); cerr != nil {
+						err = errors.Join(err, fmt.Errorf("failed to close bars dump for symbol %s: %w", symbol, err))
 					}
 				}()
 			}
