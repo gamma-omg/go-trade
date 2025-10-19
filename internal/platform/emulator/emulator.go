@@ -2,6 +2,7 @@ package emulator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -43,6 +44,10 @@ func NewTradingEmulator(log *slog.Logger, cfg config.Emulator) (*TradingEmulator
 	}
 
 	return emu, nil
+}
+
+func (e *TradingEmulator) Prefetch(symbol string, count int) ([]market.Bar, error) {
+	return nil, errors.New("operation not supported")
 }
 
 func (e *TradingEmulator) GetBars(ctx context.Context, symbol string) (<-chan market.Bar, <-chan error) {

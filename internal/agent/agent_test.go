@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"testing"
@@ -16,6 +17,10 @@ import (
 type mockBarsSource struct {
 	bars chan market.Bar
 	errs chan error
+}
+
+func (m *mockBarsSource) Prefetch(symbol string, count int) ([]market.Bar, error) {
+	return nil, errors.New("not supported")
 }
 
 func (m *mockBarsSource) GetBars(ctx context.Context, symbol string) (<-chan market.Bar, <-chan error) {

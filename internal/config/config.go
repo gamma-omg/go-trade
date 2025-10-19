@@ -45,6 +45,7 @@ type Strategy struct {
 	PositionScale  float64            `yaml:"position_scale"`
 	MarketBuffer   int                `yaml:"market_buffer"`
 	IndRef         IndicatorReference `yaml:"indicator"`
+	Prefetch       int                `yaml:"prefetch"`
 	DataDump       string             `yaml:"data_dump"`
 	DebugLevel     DebugLevel         `yaml:"debug_level"`
 	DebugDir       string             `yaml:"debug_dir"`

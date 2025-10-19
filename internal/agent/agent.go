@@ -14,6 +14,7 @@ import (
 )
 
 type barsSource interface {
+	Prefetch(symbol string, count int) ([]market.Bar, error)
 	GetBars(ctx context.Context, symbol string) (<-chan market.Bar, <-chan error)
 }
 
@@ -103,6 +104,18 @@ func (a *TradingAgent) Run(ctx context.Context) error {
 			if err := s.Init(); err != nil {
 				errCh <- fmt.Errorf("failed to initialize trading strategy for %s: %w", symbol, err)
 				return
+			}
+
+			if cfg.Prefetch > 0 {
+				initBars, err := a.bars.Prefetch(symbol, cfg.Prefetch)
+				if err != nil {
+					errCh <- fmt.Errorf("failed to prefetch last %d bars for symbol %s: %w", cfg.Prefetch, symbol, err)
+					return
+				}
+
+				for _, b := range initBars {
+					asset.Receive(b)
+				}
 			}
 
 			bars, errs := a.bars.GetBars(ctx, symbol)

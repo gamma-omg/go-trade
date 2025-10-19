@@ -39,6 +39,37 @@ func NewAlpacaPlatform(log *slog.Logger, cfg config.Alpaca) (*AlpacaPlatform, er
 	}, nil
 }
 
+func (ap *AlpacaPlatform) Prefetch(symbol string, count int) ([]market.Bar, error) {
+	bars, err := marketdata.GetCryptoBars(symbol, marketdata.GetCryptoBarsRequest{
+		CryptoFeed: marketdata.US,
+		TimeFrame:  marketdata.NewTimeFrame(1, marketdata.Min),
+		Start:      time.Now().Add(time.Duration(-count-1) * time.Minute),
+		TotalLimit: count + 1,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch historical data for %s: %w", symbol, err)
+	}
+
+	n := len(bars)
+	if n < count {
+		return nil, fmt.Errorf("failed to fetch required bars count for %s: %w", symbol, err)
+	}
+
+	res := make([]market.Bar, count)
+	for i, b := range bars[n-count:] {
+		res[i] = market.Bar{
+			Time:   b.Timestamp,
+			Open:   decimal.NewFromFloat(b.Open),
+			High:   decimal.NewFromFloat(b.High),
+			Low:    decimal.NewFromFloat(b.Low),
+			Close:  decimal.NewFromFloat(b.Close),
+			Volume: decimal.NewFromFloat(b.Volume),
+		}
+	}
+
+	return res, nil
+}
+
 func (ap *AlpacaPlatform) GetBars(ctx context.Context, symbol string) (<-chan market.Bar, <-chan error) {
 	bars := make(chan market.Bar)
 	errs := make(chan error)
