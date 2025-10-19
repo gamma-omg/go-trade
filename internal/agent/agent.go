@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -192,14 +193,14 @@ func prefetchBars(ctx context.Context, bars barsSource, agg barsAggregator, asse
 	return nil
 }
 
-func (a *TradingAgent) saveReport() error {
+func (a *TradingAgent) saveReport() (err error) {
 	f, err := os.Create(a.cfg.Report)
 	if err != nil {
 		return fmt.Errorf("failed to create report file: %w", err)
 	}
 	defer func() {
-		if cerr := f.Close(); err != nil {
-			err = cerr
+		if cerr := f.Close(); cerr != nil {
+			err = errors.Join(err, fmt.Errorf("failed to close report file: %w", err))
 		}
 	}()
 
