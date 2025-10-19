@@ -1,0 +1,41 @@
+strategies:
+  BTC:
+    budget: 10000
+    buy_confidence: 0.8
+    sell_confidence: 0.6
+    take_profit: 1.02
+    stop_loss: 0.98
+    position_scale: 1
+    market_buffer: 1024
+    debug_dir: debug
+    debug_level: 0
+    debug_window: 30
+    indicator:
+      ensemble:
+        - weight: 1
+          indicator:
+            rsi:
+              period: 7
+              overbought: 0.6
+        - weight: 1
+          indicator:
+            macd:
+              fast: 6
+              slow: 13
+              signal: 5
+              buy_threshold: 1.0
+              buy_cap: 2
+              sell_threshold: 1.0
+              sell_cap: -2
+              cross_lookback: 1
+              ema_warmup: 3
+report: report.json
+platform:
+  emulator:
+    data: 
+      BTC: data/btcusd_1-min_data.csv
+    start: 2025-01-01T11:45:26.000Z
+    end: 2026-01-01T08:30:12.000Z
+    buy_comission: 0.002
+    sell_comission: 0.002
+    balance: 10000

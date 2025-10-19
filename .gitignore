@@ -33,4 +33,5 @@ go.work.sum
 # project
 /bin
 /data
-/config
+/config/*
+!/config/example/
