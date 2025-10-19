@@ -204,6 +204,8 @@ func (ap *AlpacaPlatform) GetBalance() (b decimal.Decimal, err error) {
 
 func (ap *AlpacaPlatform) waitFillOrder(ctx context.Context, o *alpaca.Order) (*alpaca.Order, error) {
 	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
