@@ -2,16 +2,16 @@ package agent
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
-	"sync"
+	"path/filepath"
 	"time"
 
 	"github.com/gamma-omg/trading-bot/internal/config"
 	"github.com/gamma-omg/trading-bot/internal/market"
+	"golang.org/x/sync/errgroup"
 )
 
 type barsSource interface {
@@ -71,62 +71,38 @@ func NewTradingAgent(log *slog.Logger, cfg config.Config, report reportBuilder) 
 	return a, nil
 }
 
-func (a *TradingAgent) Run(ctx context.Context) error {
+func (a *TradingAgent) Run(ctx context.Context) (e error) {
 	a.log.Info("starting agent")
 
-	errCh := make(chan error, len(a.cfg.Strategies))
-
-	var wg sync.WaitGroup
+	grp, ctx := errgroup.WithContext(ctx)
 	for symbol, cfg := range a.cfg.Strategies {
-		wg.Add(1)
-		go func(symbol string, cfg config.Strategy) {
-			defer wg.Done()
+		symbol, cfg := symbol, cfg
 
+		grp.Go(func() error {
 			asset := market.NewAsset(symbol, cfg.MarketBuffer)
 			s, err := a.strategyFactory(cfg, asset)
 			if err != nil {
-				errCh <- fmt.Errorf("failed to create strategy for symbol %s: %w", symbol, err)
-				return
+				return fmt.Errorf("failed to create strategy for symbol %s: %w", symbol, err)
 			}
 
-			barsDump := NewCsvBarsDump(io.Discard)
-			if cfg.DataDump != "" {
-				f, err := os.Create(cfg.DataDump)
-				if err != nil {
-					errCh <- fmt.Errorf("failed to open bars dump file for %s: %w", symbol, err)
-					return
-				}
-				barsDump = NewCsvBarsDump(f)
+			if err := s.Init(); err != nil {
+				return fmt.Errorf("failed to initialize trading strategy for %s: %w", symbol, err)
+			}
 
+			barsDump, closer, err := createBarsDump(cfg.DataDump)
+			if err != nil {
+				return fmt.Errorf("failed to create bars dump for symbol %s: %w", symbol, err)
+			}
+			if closer != nil {
 				defer func() {
-					err := f.Close()
-					if err != nil {
-						errCh <- fmt.Errorf("failed to close bars dump file for %s: %w", symbol, err)
+					if err := closer.Close(); err != nil {
+						e = fmt.Errorf("failed to close bars dump for symbol %s: %w", symbol, err)
 					}
 				}()
 			}
 
-			if err := s.Init(); err != nil {
-				errCh <- fmt.Errorf("failed to initialize trading strategy for %s: %w", symbol, err)
-				return
-			}
-
-			var agg barsAggregator = &market.IdentityAggregator{}
-			if cfg.AggregateBars > 1 {
-				agg = &market.IntervalAggregator{Interval: time.Duration(cfg.AggregateBars) * time.Minute}
-			}
-
-			if cfg.Prefetch > 0 {
-				initBars, err := a.bars.Prefetch(symbol, cfg.Prefetch)
-				if err != nil {
-					errCh <- fmt.Errorf("failed to prefetch last %d bars for symbol %s: %w", cfg.Prefetch, symbol, err)
-					return
-				}
-
-				for b := range agg.Aggregate(initBars) {
-					asset.Receive(b)
-				}
-			}
+			agg := createBarsAggregator(cfg.AggregateBars)
+			prefetchBars(ctx, a.bars, agg, asset, cfg.Prefetch)
 
 			bars, errs := a.bars.GetBars(ctx, symbol)
 			bars = agg.Aggregate(bars)
@@ -134,42 +110,83 @@ func (a *TradingAgent) Run(ctx context.Context) error {
 			for {
 				select {
 				case <-ctx.Done():
-					return
+					return ctx.Err()
 				case err, ok := <-errs:
 					if ok {
-						errCh <- fmt.Errorf("error reading bars for %s: %w", symbol, err)
-						return
+						return fmt.Errorf("error reading bars for %s: %w", symbol, err)
 					}
 				case bar, ok := <-bars:
 					if !ok {
-						return
+						return nil
 					}
 
-					barsDump.Dump(bar)
+					if err := barsDump.Dump(bar); err != nil {
+						return fmt.Errorf("failed to dump bar for symbol %s: %w", symbol, err)
+					}
+
 					asset.Receive(bar)
+
 					if err := s.Run(ctx); err != nil {
-						errCh <- fmt.Errorf("failed to run strategy for %s: %w", symbol, err)
-						return
+						return fmt.Errorf("failed to run strategy for %s: %w", symbol, err)
 					}
 				}
 			}
-		}(symbol, cfg)
+		})
 	}
 
-	wg.Wait()
-	close(errCh)
-
-	var errs []error
-	for e := range errCh {
-		errs = append(errs, e)
-	}
-
-	if len(errs) > 0 {
-		return errors.Join(errs...)
+	if err := grp.Wait(); err != nil {
+		return err
 	}
 
 	if err := a.saveReport(); err != nil {
 		return fmt.Errorf("failed to save report: %w", err)
+	}
+
+	return nil
+}
+
+func createBarsDump(path string) (*csvBarsDump, io.Closer, error) {
+	if path == "" {
+		return NewCsvBarsDump(io.Discard), nil, nil
+	}
+
+	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
+		return nil, nil, fmt.Errorf("failed to create dump output directory %w", err)
+	}
+
+	f, err := os.Create(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to open bars dump file: %w", err)
+	}
+
+	return NewCsvBarsDump(f), f, nil
+}
+
+func createBarsAggregator(n int) barsAggregator {
+	if n > 1 {
+		return &market.IntervalAggregator{Interval: time.Duration(n) * time.Minute}
+	}
+
+	return &market.IdentityAggregator{}
+}
+
+func prefetchBars(ctx context.Context, bars barsSource, agg barsAggregator, asset *market.Asset, n int) error {
+	if n < 1 {
+		return nil
+	}
+
+	barsCh, err := bars.Prefetch(asset.Symbol, n)
+	if err != nil {
+		return fmt.Errorf("failed to prefetch last %d bars for symbol %s: %w", n, asset.Symbol, err)
+	}
+
+	for b := range agg.Aggregate(barsCh) {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			asset.Receive(b)
+		}
 	}
 
 	return nil

@@ -7,6 +7,7 @@ require (
 	github.com/pplcc/plotext v0.0.0-20180221170324-68ab3c6e05c3
 	github.com/shopspring/decimal v1.4.0
 	github.com/stretchr/testify v1.10.0
+	golang.org/x/sync v0.12.0
 	gonum.org/v1/plot v0.16.0
 	gopkg.in/yaml.v3 v3.0.1
 )
