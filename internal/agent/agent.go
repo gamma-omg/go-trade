@@ -24,6 +24,7 @@ type tradingPlatform interface {
 }
 
 type tradingStrategy interface {
+	Init() error
 	Run(ctx context.Context) error
 }
 
@@ -51,7 +52,7 @@ func NewTradingAgent(log *slog.Logger, cfg config.Config, report reportBuilder) 
 		strategyFactory: func(cfg config.Strategy, asset *market.Asset) (tradingStrategy, error) {
 			ind, err := createIndicator(cfg.IndRef, asset)
 			if err != nil {
-				return nil, fmt.Errorf("failed to creat trading strategy for symbol %s: %w", asset.Symbol, err)
+				return nil, fmt.Errorf("failed to create trading strategy for symbol %s: %w", asset.Symbol, err)
 			}
 
 			validator := &defaultPositionValidator{
@@ -97,6 +98,11 @@ func (a *TradingAgent) Run(ctx context.Context) error {
 						errCh <- fmt.Errorf("failed to close bars dump file for %s: %w", symbol, err)
 					}
 				}()
+			}
+
+			if err := s.Init(); err != nil {
+				errCh <- fmt.Errorf("failed to initialize trading strategy for %s: %w", symbol, err)
+				return
 			}
 
 			bars, errs := a.bars.GetBars(ctx, symbol)

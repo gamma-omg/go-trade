@@ -4,6 +4,7 @@ import "fmt"
 
 type tradingIndicator interface {
 	GetSignal() (s Signal, err error)
+	DrawDebug(d *DebugPlot) error
 }
 
 type WeightedIndicator struct {
@@ -47,4 +48,14 @@ func (i *EnsembleIndicator) GetSignal() (s Signal, err error) {
 		Act:        ACT_HOLD,
 		Confidence: 1.0,
 	}, nil
+}
+
+func (i *EnsembleIndicator) DrawDebug(d *DebugPlot) error {
+	for _, c := range i.Children {
+		if err := c.Indicator.DrawDebug(d); err != nil {
+			return fmt.Errorf("failed to debug draw child: %w", err)
+		}
+	}
+
+	return nil
 }

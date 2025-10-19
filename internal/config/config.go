@@ -46,6 +46,9 @@ type Strategy struct {
 	MarketBuffer   int                `yaml:"market_buffer"`
 	IndRef         IndicatorReference `yaml:"indicator"`
 	DataDump       string             `yaml:"data_dump"`
+	DebugLevel     DebugLevel         `yaml:"debug_level"`
+	DebugDir       string             `yaml:"debug_dir"`
+	DebugWindow    int                `yaml:"debug_window"`
 }
 
 type PlatformReference struct {
@@ -65,24 +68,25 @@ const (
 )
 
 type MACD struct {
-	Fast          int        `yaml:"fast"`
-	Slow          int        `yaml:"slow"`
-	Signal        int        `yaml:"signal"`
-	BuyThreshold  float64    `yaml:"buy_threshold"`
-	BuyCap        float64    `yaml:"buy_cap"`
-	SellThreshold float64    `yaml:"sell_threshold"`
-	SellCap       float64    `yaml:"sell_cap"`
-	CrossLookback int        `yaml:"cross_lookback"`
-	EmaWarmup     int        `yaml:"ema_warmup"`
-	DebugLevel    DebugLevel `yaml:"debug_level"`
-	DebugDir      string     `yaml:"debug_dir"`
+	Fast          int     `yaml:"fast"`
+	Slow          int     `yaml:"slow"`
+	Signal        int     `yaml:"signal"`
+	BuyThreshold  float64 `yaml:"buy_threshold"`
+	BuyCap        float64 `yaml:"buy_cap"`
+	SellThreshold float64 `yaml:"sell_threshold"`
+	SellCap       float64 `yaml:"sell_cap"`
+	CrossLookback int     `yaml:"cross_lookback"`
+	EmaWarmup     int     `yaml:"ema_warmup"`
 }
 
-type Ensemble struct {
-	Indicators []struct {
-		Weight float64
-		IndRef IndicatorReference
-	}
+type RSI struct {
+	Period     int     `yaml:"period"`
+	Overbought float64 `yaml:"overbought"`
+}
+
+type Ensemble []struct {
+	Weight float64            `yaml:"weight"`
+	IndRef IndicatorReference `yaml:"indicator"`
 }
 
 type Indicator interface{}
@@ -108,6 +112,12 @@ func (w *IndicatorReference) UnmarshalYAML(value *yaml.Node) error {
 			return fmt.Errorf("failed parsing macd indicator config: %w", err)
 		}
 		w.Indicator = macd
+	case "rsi":
+		var rsi RSI
+		if err := value.Content[1].Decode(&rsi); err != nil {
+			return fmt.Errorf("failed parsing rsi indicator config: %w", err)
+		}
+		w.Indicator = rsi
 	case "ensemble":
 		var ensemble Ensemble
 		if err := value.Content[1].Decode(&ensemble); err != nil {

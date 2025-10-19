@@ -18,10 +18,15 @@ func createIndicator(cfg config.IndicatorReference, asset *market.Asset) (tradin
 		return indicator.NewMACD(macd, asset), nil
 	}
 
+	rsi, ok := cfg.Indicator.(config.RSI)
+	if ok {
+		return indicator.NewRSI(rsi, asset), nil
+	}
+
 	ensemble, ok := cfg.Indicator.(config.Ensemble)
 	if ok {
-		children := make([]indicator.WeightedIndicator, len(ensemble.Indicators))
-		for i, c := range ensemble.Indicators {
+		children := make([]indicator.WeightedIndicator, len(ensemble))
+		for i, c := range ensemble {
 			child, err := createIndicator(c.IndRef, asset)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create child indicator: %w", err)
@@ -42,7 +47,7 @@ func createIndicator(cfg config.IndicatorReference, asset *market.Asset) (tradin
 func createPlatform(log *slog.Logger, cfg config.PlatformReference) (tradingPlatform, error) {
 	alpacaCfg, ok := cfg.Platform.(config.Alpaca)
 	if ok {
-		return alpaca.NewAlpacaPlatform(alpacaCfg)
+		return alpaca.NewAlpacaPlatform(log, alpacaCfg)
 	}
 
 	emulatorCfg, ok := cfg.Platform.(config.Emulator)

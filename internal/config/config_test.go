@@ -12,22 +12,22 @@ import (
 func TestRead_Strategy(t *testing.T) {
 	cfg, err := Read(strings.NewReader(`
 strategies:
-    BTC:
-        budget: 1000
-        buy_confidence: 0.8
-        sell_confidence: 0.7
-        position_scale: 1
-        market_buffer: 1024
-        indicator:
-            macd:
-                fast: 8	
-                slow: 12
-                signal: 10
-                buy_threshold: 10.1
-                buy_cap: 100.9
-                sell_threshold: -5.5
-                sell_cap: -200.4
-                cross_lookback: 3
+  BTC:
+    budget: 1000
+    buy_confidence: 0.8
+    sell_confidence: 0.7
+    position_scale: 1
+    market_buffer: 1024
+    indicator:
+      macd:
+        fast: 8	
+        slow: 12
+        signal: 10
+        buy_threshold: 10.1
+        buy_cap: 100.9
+        sell_threshold: -5.5
+        sell_cap: -200.4
+        cross_lookback: 3
 `))
 
 	require.NoError(t, err)
@@ -57,14 +57,14 @@ strategies:
 func TestRead_Emulator(t *testing.T) {
 	cfg, err := Read(strings.NewReader(`
 platform:
-    emulator:
-        data:
-            BTC: /var/data/btc.txt
-            ETH: /var/data/eth.txt
-        start: 2014-09-12T11:45:26.000Z
-        end: 2020-12-31T08:30:12.000Z
-        buy_comission: 0.002
-        sell_comission: 0.0015
+  emulator:
+    data:
+      BTC: /var/data/btc.txt
+      ETH: /var/data/eth.txt
+    start: 2014-09-12T11:45:26.000Z
+    end: 2020-12-31T08:30:12.000Z
+    buy_comission: 0.002
+    sell_comission: 0.0015
 `))
 
 	require.NoError(t, err)
@@ -83,4 +83,38 @@ platform:
 	assert.Equal(t, end, emu.End)
 	assert.Equal(t, 0.002, emu.BuyComission)
 	assert.Equal(t, 0.0015, emu.SellComission)
+}
+
+func TestRead_Ensemble(t *testing.T) {
+	cfg, err := Read(strings.NewReader(`
+strategies:
+  BTC:
+    indicator:
+      ensemble:
+        - weight: 1
+          indicator:
+            rsi:
+        - weight: 2
+          indicator:
+            macd:
+`))
+
+	require.NoError(t, err)
+
+	s, ok := cfg.Strategies["BTC"]
+	require.True(t, ok)
+
+	ensemble, ok := s.IndRef.Indicator.(Ensemble)
+	require.True(t, ok)
+
+	assert.Len(t, ensemble, 2)
+
+	assert.Equal(t, 1.0, ensemble[0].Weight)
+	assert.Equal(t, 2.0, ensemble[1].Weight)
+
+	_, ok = ensemble[0].IndRef.Indicator.(RSI)
+	assert.True(t, ok)
+
+	_, ok = ensemble[1].IndRef.Indicator.(MACD)
+	assert.True(t, ok)
 }

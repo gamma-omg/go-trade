@@ -5,6 +5,9 @@ import (
 	"math"
 	"testing"
 
+	"github.com/gamma-omg/trading-bot/internal/market"
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,6 +42,50 @@ func TestEma(t *testing.T) {
 					t.Errorf("invalid ema component at %d: expected: %f got: %f ", i, c.ema[i], v)
 				}
 			}
+		})
+	}
+}
+
+func TestRS(t *testing.T) {
+	tbl := []struct {
+		data []float64
+		rs   []float64
+	}{
+		{
+			data: []float64{},
+			rs:   []float64{},
+		},
+		{
+			data: []float64{1, 2, 3, 2, 1, 2},
+			rs:   []float64{1.5, 2.0, 1.25, 25.0 / 29.0, 179.0 / 145.0},
+		},
+		{
+			data: []float64{1, 2, 1, 2, 1},
+			rs:   []float64{1.0, 0.667, 1.083, 0.712},
+		},
+		{
+			data: []float64{1, 1, 1, 1, 1},
+			rs:   []float64{1, 1, 1, 1},
+		},
+		{
+			data: []float64{1, 2, 3, 4, 5},
+			rs:   []float64{-1, -1, -1, -1},
+		},
+		{
+			data: []float64{5, 4, 3, 2, 1},
+			rs:   []float64{0, 0, 0, 0},
+		},
+	}
+
+	for i, c := range tbl {
+		t.Run(fmt.Sprintf("case_%d", i), func(t *testing.T) {
+			bars := make([]market.Bar, len(c.data))
+			for i, v := range c.data {
+				bars[i] = market.Bar{Close: decimal.NewFromFloat(v)}
+			}
+
+			res := rs(bars)
+			assert.InDeltaSlice(t, c.rs, res, 1e-3)
 		})
 	}
 }

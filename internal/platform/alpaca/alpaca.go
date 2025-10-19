@@ -3,6 +3,7 @@ package alpaca
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -16,10 +17,11 @@ import (
 
 type AlpacaPlatform struct {
 	cfg    config.Alpaca
+	log    *slog.Logger
 	client *alpaca.Client
 }
 
-func NewAlpacaPlatform(cfg config.Alpaca) (*AlpacaPlatform, error) {
+func NewAlpacaPlatform(log *slog.Logger, cfg config.Alpaca) (*AlpacaPlatform, error) {
 	c := alpaca.NewClient(alpaca.ClientOpts{
 		BaseURL:   cfg.BaseUrl,
 		APIKey:    cfg.ApiKey,
@@ -32,6 +34,7 @@ func NewAlpacaPlatform(cfg config.Alpaca) (*AlpacaPlatform, error) {
 
 	return &AlpacaPlatform{
 		cfg:    cfg,
+		log:    log,
 		client: c,
 	}, nil
 }
@@ -83,7 +86,9 @@ func (ap *AlpacaPlatform) Open(ctx context.Context, asset *market.Asset, size de
 		return
 	}
 
-	qty := bar.Close.Div(size)
+	qty := size.Div(bar.Close)
+	ap.log.Info("open alpaca position", slog.String("symbol", asset.Symbol), slog.String("qty", qty.String()), slog.String("size", size.String()))
+
 	ord, err := ap.client.PlaceOrder(alpaca.PlaceOrderRequest{
 		Side:        alpaca.Buy,
 		Symbol:      asset.Symbol,

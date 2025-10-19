@@ -47,9 +47,17 @@ func (r *jsonReportBuilder) SubmitDeal(d market.Deal) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	pct := 0.0
+	dealPct := 0.0
 	if !d.Spend.IsZero() {
-		pct, _ = d.Gain.Div(d.Spend).Float64()
+		dealPct, _ = d.Gain.Div(d.Spend).Float64()
+	}
+
+	r.spent = r.spent.Add(d.Spend)
+	r.gained = r.gained.Add(d.Gain)
+
+	totalPct := 0.0
+	if !r.spent.IsZero() {
+		totalPct, _ = r.gained.Div(r.spent).Float64()
 	}
 
 	deals := r.report.Deals[d.Symbol]
@@ -58,28 +66,28 @@ func (r *jsonReportBuilder) SubmitDeal(d market.Deal) {
 		SellTime: d.SellTime,
 		Spend:    d.Spend.String(),
 		Gain:     d.Gain.String(),
-		GainPct:  pct,
+		GainPct:  dealPct,
 	})
 	r.report.Deals[d.Symbol] = deals
 
-	r.spent = r.spent.Add(d.Spend)
-	r.gained = r.gained.Add(d.Gain)
-
-	r.report.TotalGain = r.gained.String()
-
-	if r.spent.IsZero() {
-		return
-	}
-
-	pct, _ = r.gained.Div(r.spent).Float64()
-	r.report.TotalGainPct = pct
-
-	r.log.Info("deal closed", slog.String("symbol", d.Symbol), slog.Float64("gain_pct", pct), slog.Time("buy_time", d.BuyTime), slog.Time("sell_time", d.SellTime))
+	r.log.Info("deal closed",
+		slog.String("symbol", d.Symbol),
+		slog.Float64("gain_pct", dealPct),
+		slog.Float64("total_gain_pct", totalPct),
+		slog.Time("buy_time", d.BuyTime),
+		slog.Time("sell_time", d.SellTime))
 }
 
 func (r *jsonReportBuilder) Write(w io.Writer) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	if r.gained.IsPositive() {
+		r.report.TotalGain = r.gained.String()
+	}
+	if !r.spent.IsZero() {
+		r.report.TotalGainPct, _ = r.gained.Div(r.spent).Float64()
+	}
 
 	e := json.NewEncoder(w)
 	if err := e.Encode(r.report); err != nil {

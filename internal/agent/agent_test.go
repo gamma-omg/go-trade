@@ -26,6 +26,10 @@ type mockTradingStrategy struct {
 	runCalls int
 }
 
+func (m *mockTradingStrategy) Init() error {
+	return nil
+}
+
 func (m *mockTradingStrategy) Run(ctx context.Context) error {
 	m.runCalls++
 	return nil
@@ -52,21 +56,16 @@ func TestCreateIndicator_MACD(t *testing.T) {
 func TestCreateIndicator_Ensemble(t *testing.T) {
 	ind, err := createIndicator(config.IndicatorReference{
 		Indicator: config.Ensemble{
-			Indicators: []struct {
-				Weight float64
-				IndRef config.IndicatorReference
-			}{
-				{
-					Weight: 1.0,
-					IndRef: config.IndicatorReference{
-						Indicator: config.MACD{},
-					},
+			{
+				Weight: 1.0,
+				IndRef: config.IndicatorReference{
+					Indicator: config.MACD{},
 				},
-				{
-					Weight: 2.0,
-					IndRef: config.IndicatorReference{
-						Indicator: config.MACD{},
-					},
+			},
+			{
+				Weight: 2.0,
+				IndRef: config.IndicatorReference{
+					Indicator: config.MACD{},
 				},
 			},
 		},

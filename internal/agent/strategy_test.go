@@ -67,6 +67,10 @@ func (m *mockIndicator) GetSignal() (indicator.Signal, error) {
 	}, nil
 }
 
+func (m *mockIndicator) DrawDebug(d *indicator.DebugPlot) error {
+	return nil
+}
+
 type mockReport struct {
 	deals []market.Deal
 }
