@@ -17,7 +17,7 @@ func (m *mockTradingIndicator) GetSignal() (Signal, error) {
 	return m.signal, m.err
 }
 
-func (m *mockTradingIndicator) DrawDebug(d *DebugPlot) error {
+func (m *mockTradingIndicator) DrawDebug(_ *DebugPlot) error {
 	return nil
 }
 

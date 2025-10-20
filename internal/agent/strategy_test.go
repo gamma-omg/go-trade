@@ -67,7 +67,7 @@ func (m *mockIndicator) GetSignal() (indicator.Signal, error) {
 	}, nil
 }
 
-func (m *mockIndicator) DrawDebug(d *indicator.DebugPlot) error {
+func (m *mockIndicator) DrawDebug(_ *indicator.DebugPlot) error {
 	return nil
 }
 
@@ -79,7 +79,7 @@ func (m *mockReport) SubmitDeal(d market.Deal) {
 	m.deals = append(m.deals, d)
 }
 
-func (m *mockReport) Write(w io.Writer) error {
+func (m *mockReport) Write(_ io.Writer) error {
 	return nil
 }
 
@@ -87,7 +87,7 @@ type mockPositionValidator struct {
 	needClose bool
 }
 
-func (m *mockPositionValidator) NeedClose(p *market.Position) (bool, error) {
+func (m *mockPositionValidator) NeedClose(_ *market.Position) (bool, error) {
 	return m.needClose, nil
 }
 
