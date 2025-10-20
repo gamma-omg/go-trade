@@ -165,7 +165,10 @@ func createBarsDump(path string) (*csvBarsDump, io.Closer, error) {
 
 func createBarsAggregator(n int) barsAggregator {
 	if n > 1 {
-		return &market.IntervalAggregator{Interval: time.Duration(n) * time.Minute}
+		return &market.IntervalAggregator{
+			BarDuration: 1 * time.Minute,
+			Interval:    time.Duration(n) * time.Minute,
+		}
 	}
 
 	return &market.IdentityAggregator{}

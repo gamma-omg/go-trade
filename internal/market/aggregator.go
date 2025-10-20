@@ -14,17 +14,26 @@ func (a *IdentityAggregator) Aggregate(bars <-chan Bar) <-chan Bar {
 }
 
 type IntervalAggregator struct {
-	Interval time.Duration
-	cur      *Bar
+	BarDuration time.Duration
+	Interval    time.Duration
 }
 
 func (a *IntervalAggregator) Aggregate(bars <-chan Bar) <-chan Bar {
 	res := make(chan Bar)
 	go func() {
 		defer close(res)
+
+		var cur *Bar
+		var end time.Time
 		for b := range bars {
-			if a.cur == nil {
-				a.cur = &Bar{
+			if cur != nil && !b.Time.Before(end) {
+				res <- *cur
+				cur = nil
+			}
+
+			if cur == nil {
+				end = b.Time.Truncate(a.Interval).Add(a.Interval)
+				cur = &Bar{
 					Time: b.Time,
 					Open: b.Open,
 					High: b.High,
@@ -32,15 +41,20 @@ func (a *IntervalAggregator) Aggregate(bars <-chan Bar) <-chan Bar {
 				}
 			}
 
-			a.cur.Close = b.Close
-			a.cur.High = decimal.Max(a.cur.High, b.High)
-			a.cur.Low = decimal.Min(a.cur.Low, b.Low)
-			a.cur.Volume = a.cur.Volume.Add(b.Volume)
+			cur.Close = b.Close
+			cur.High = decimal.Max(cur.High, b.High)
+			cur.Low = decimal.Min(cur.Low, b.Low)
+			cur.Volume = cur.Volume.Add(b.Volume)
 
-			if b.Time.Add(1*time.Minute).Sub(a.cur.Time) >= a.Interval {
-				res <- *a.cur
-				a.cur = nil
+			bEnd := b.Time.Add(a.BarDuration)
+			if !bEnd.Before(end) {
+				res <- *cur
+				cur = nil
 			}
+		}
+
+		if cur != nil {
+			res <- *cur
 		}
 	}()
 
