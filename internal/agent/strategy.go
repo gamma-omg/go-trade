@@ -85,12 +85,11 @@ func (ts *TradingStrategy) Init() error {
 
 func (ts *TradingStrategy) Run(ctx context.Context) error {
 	if ts.position != nil {
-		close, err := ts.posValidator.NeedClose(ts.position)
+		clz, err := ts.posValidator.NeedClose(ts.position)
 		if err != nil {
 			return fmt.Errorf("failed to validate position: %w", err)
 		}
-
-		if close {
+		if clz {
 			if err := ts.sell(ctx, 1.0); err != nil {
 				return fmt.Errorf("failed to sell position: %w", err)
 			}
@@ -108,11 +107,11 @@ func (ts *TradingStrategy) Run(ctx context.Context) error {
 		}
 	}
 
-	if s.Act == indicator.ACT_HOLD {
+	if s.Act == indicator.ActHold {
 		return nil
 	}
 
-	if ts.position == nil && s.Act == indicator.ACT_BUY && s.Confidence >= ts.cfg.BuyConfidence {
+	if ts.position == nil && s.Act == indicator.ActBuy && s.Confidence >= ts.cfg.BuyConfidence {
 		if err = ts.buy(ctx, s.Confidence); err != nil {
 			return fmt.Errorf("failed to process buy signal: %w", err)
 		}
@@ -124,7 +123,7 @@ func (ts *TradingStrategy) Run(ctx context.Context) error {
 		}
 	}
 
-	if ts.position != nil && s.Act == indicator.ACT_SELL && s.Confidence >= ts.cfg.SellConfidence {
+	if ts.position != nil && s.Act == indicator.ActSell && s.Confidence >= ts.cfg.SellConfidence {
 		if err = ts.sell(ctx, s.Confidence); err != nil {
 			return fmt.Errorf("failed to process sell signal: %w", err)
 		}

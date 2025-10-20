@@ -15,11 +15,11 @@ import (
 type DebugPlot struct {
 	plots   []*plot.Plot
 	heights []float64
-	w       int
-	h       int
+	w       float64
+	h       float64
 }
 
-func NewDebugPlot(w, h int) *DebugPlot {
+func NewDebugPlot(w, h float64) *DebugPlot {
 	return &DebugPlot{w: w, h: h}
 }
 
@@ -47,10 +47,10 @@ func (d *DebugPlot) Save(path string) (err error) {
 
 	h := 0.0
 	for _, v := range d.heights {
-		h += v * float64(d.h)
+		h += v * d.h
 	}
 
-	img := vgimg.New(vg.Points(float64(d.w)), vg.Points(float64(h)))
+	img := vgimg.New(vg.Points(d.w), vg.Points(h))
 	dc := draw.New(img)
 
 	canvases := tbl.Align(plots2d, dc)

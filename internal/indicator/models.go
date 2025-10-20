@@ -5,9 +5,9 @@ import "fmt"
 type Action int
 
 const (
-	ACT_BUY  Action = 1
-	ACT_HOLD Action = 0
-	ACT_SELL Action = -1
+	ActBuy  Action = 1
+	ActHold Action = 0
+	ActSell Action = -1
 )
 
 type Signal struct {

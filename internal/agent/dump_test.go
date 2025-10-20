@@ -13,7 +13,7 @@ import (
 
 func TestDump(t *testing.T) {
 	var buff bytes.Buffer
-	d := NewCsvBarsDump(&buff)
+	d := newCsvBarsDump(&buff)
 	err := d.Dump(market.Bar{
 		Time:   time.Unix(1588223760, 0),
 		Open:   decimal.NewFromInt(100),

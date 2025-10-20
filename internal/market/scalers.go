@@ -6,7 +6,7 @@ type ConstScaler struct {
 	Size decimal.Decimal
 }
 
-func (s *ConstScaler) GetSize(budget decimal.Decimal, confidence float64) decimal.Decimal {
+func (s *ConstScaler) GetSize(budget decimal.Decimal, _ float64) decimal.Decimal {
 	return decimal.Min(budget, s.Size)
 }
 

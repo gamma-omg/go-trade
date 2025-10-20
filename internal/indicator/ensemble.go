@@ -33,19 +33,19 @@ func (i *EnsembleIndicator) GetSignal() (s Signal, err error) {
 
 	if act > 0 {
 		return Signal{
-			Act:        ACT_BUY,
+			Act:        ActBuy,
 			Confidence: act / totalWeight,
 		}, nil
 	}
 	if act < 0 {
 		return Signal{
-			Act:        ACT_SELL,
+			Act:        ActSell,
 			Confidence: -act / totalWeight,
 		}, nil
 	}
 
 	return Signal{
-		Act:        ACT_HOLD,
+		Act:        ActHold,
 		Confidence: 1.0,
 	}, nil
 }

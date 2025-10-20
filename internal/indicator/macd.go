@@ -29,7 +29,7 @@ func NewMACD(cfg config.MACD, bars barsProvider) *MACDIndicator {
 }
 
 func (i *MACDIndicator) GetSignal() (s Signal, err error) {
-	s = Signal{ACT_HOLD, 1.0}
+	s = Signal{ActHold, 1.0}
 
 	count := i.getRequiredDataPoints()
 	if !i.bars.HasBars(count) {
@@ -51,7 +51,7 @@ func (i *MACDIndicator) GetSignal() (s Signal, err error) {
 
 	if last > i.cfg.BuyThreshold && hasCrossOver(macd, i.cfg.CrossLookback) {
 		s = Signal{
-			Act:        ACT_BUY,
+			Act:        ActBuy,
 			Confidence: min(1, (last-i.cfg.BuyThreshold)/(i.cfg.BuyCap-i.cfg.BuyThreshold)),
 		}
 
@@ -60,7 +60,7 @@ func (i *MACDIndicator) GetSignal() (s Signal, err error) {
 
 	if last < i.cfg.SellThreshold && hasCrossOver(macd, i.cfg.CrossLookback) {
 		s = Signal{
-			Act:        ACT_SELL,
+			Act:        ActSell,
 			Confidence: min(1, (last-i.cfg.SellThreshold)/(i.cfg.SellCap-i.cfg.SellThreshold)),
 		}
 

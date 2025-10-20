@@ -32,16 +32,16 @@ func TestEnsemble_GetSignal(t *testing.T) {
 			children: []WeightedIndicator{
 				{
 					Weight: 1.0, Indicator: &mockTradingIndicator{
-						signal: Signal{Act: ACT_BUY, Confidence: 1.0},
+						signal: Signal{Act: ActBuy, Confidence: 1.0},
 					},
 				},
 				{
 					Weight: 1.0, Indicator: &mockTradingIndicator{
-						signal: Signal{Act: ACT_SELL, Confidence: 1.0},
+						signal: Signal{Act: ActSell, Confidence: 1.0},
 					},
 				},
 			},
-			out: Signal{Act: ACT_HOLD, Confidence: 1.0},
+			out: Signal{Act: ActHold, Confidence: 1.0},
 		},
 
 		// case 1
@@ -49,16 +49,16 @@ func TestEnsemble_GetSignal(t *testing.T) {
 			children: []WeightedIndicator{
 				{
 					Weight: 1.0, Indicator: &mockTradingIndicator{
-						signal: Signal{Act: ACT_BUY, Confidence: 1.0},
+						signal: Signal{Act: ActBuy, Confidence: 1.0},
 					},
 				},
 				{
 					Weight: 1.0, Indicator: &mockTradingIndicator{
-						signal: Signal{Act: ACT_BUY, Confidence: 1.0},
+						signal: Signal{Act: ActBuy, Confidence: 1.0},
 					},
 				},
 			},
-			out: Signal{Act: ACT_BUY, Confidence: 1.0},
+			out: Signal{Act: ActBuy, Confidence: 1.0},
 		},
 
 		// case 2
@@ -66,16 +66,16 @@ func TestEnsemble_GetSignal(t *testing.T) {
 			children: []WeightedIndicator{
 				{
 					Weight: 1.0, Indicator: &mockTradingIndicator{
-						signal: Signal{Act: ACT_BUY, Confidence: 1.0},
+						signal: Signal{Act: ActBuy, Confidence: 1.0},
 					},
 				},
 				{
 					Weight: 0.1, Indicator: &mockTradingIndicator{
-						signal: Signal{Act: ACT_BUY, Confidence: 1.0},
+						signal: Signal{Act: ActBuy, Confidence: 1.0},
 					},
 				},
 			},
-			out: Signal{Act: ACT_BUY, Confidence: 1.0},
+			out: Signal{Act: ActBuy, Confidence: 1.0},
 		},
 
 		// case 3
@@ -83,16 +83,16 @@ func TestEnsemble_GetSignal(t *testing.T) {
 			children: []WeightedIndicator{
 				{
 					Weight: 1.0, Indicator: &mockTradingIndicator{
-						signal: Signal{Act: ACT_BUY, Confidence: 1.0},
+						signal: Signal{Act: ActBuy, Confidence: 1.0},
 					},
 				},
 				{
 					Weight: 1.0, Indicator: &mockTradingIndicator{
-						signal: Signal{Act: ACT_BUY, Confidence: .5},
+						signal: Signal{Act: ActBuy, Confidence: .5},
 					},
 				},
 			},
-			out: Signal{Act: ACT_BUY, Confidence: 0.75},
+			out: Signal{Act: ActBuy, Confidence: 0.75},
 		},
 
 		// case 4
@@ -100,16 +100,16 @@ func TestEnsemble_GetSignal(t *testing.T) {
 			children: []WeightedIndicator{
 				{
 					Weight: 0.9, Indicator: &mockTradingIndicator{
-						signal: Signal{Act: ACT_BUY, Confidence: 1.0},
+						signal: Signal{Act: ActBuy, Confidence: 1.0},
 					},
 				},
 				{
 					Weight: 0.1, Indicator: &mockTradingIndicator{
-						signal: Signal{Act: ACT_BUY, Confidence: .5},
+						signal: Signal{Act: ActBuy, Confidence: .5},
 					},
 				},
 			},
-			out: Signal{Act: ACT_BUY, Confidence: 0.95},
+			out: Signal{Act: ActBuy, Confidence: 0.95},
 		},
 
 		// case 5
@@ -117,16 +117,16 @@ func TestEnsemble_GetSignal(t *testing.T) {
 			children: []WeightedIndicator{
 				{
 					Weight: 1.0, Indicator: &mockTradingIndicator{
-						signal: Signal{Act: ACT_SELL, Confidence: 1.0},
+						signal: Signal{Act: ActSell, Confidence: 1.0},
 					},
 				},
 				{
 					Weight: 1.0, Indicator: &mockTradingIndicator{
-						signal: Signal{Act: ACT_SELL, Confidence: 1.0},
+						signal: Signal{Act: ActSell, Confidence: 1.0},
 					},
 				},
 			},
-			out: Signal{Act: ACT_SELL, Confidence: 1.0},
+			out: Signal{Act: ActSell, Confidence: 1.0},
 		},
 
 		// case 6
@@ -134,16 +134,16 @@ func TestEnsemble_GetSignal(t *testing.T) {
 			children: []WeightedIndicator{
 				{
 					Weight: 0.1, Indicator: &mockTradingIndicator{
-						signal: Signal{Act: ACT_SELL, Confidence: 1.0},
+						signal: Signal{Act: ActSell, Confidence: 1.0},
 					},
 				},
 				{
 					Weight: 0.9, Indicator: &mockTradingIndicator{
-						signal: Signal{Act: ACT_BUY, Confidence: 1.0},
+						signal: Signal{Act: ActBuy, Confidence: 1.0},
 					},
 				},
 			},
-			out: Signal{Act: ACT_BUY, Confidence: 0.8},
+			out: Signal{Act: ActBuy, Confidence: 0.8},
 		},
 	}
 

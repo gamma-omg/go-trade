@@ -14,7 +14,7 @@ type csvBarsDump struct {
 	writeHeader bool
 }
 
-func NewCsvBarsDump(w io.Writer) *csvBarsDump {
+func newCsvBarsDump(w io.Writer) *csvBarsDump {
 	return &csvBarsDump{csv.NewWriter(w), true}
 }
 

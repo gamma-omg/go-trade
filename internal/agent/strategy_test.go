@@ -104,12 +104,12 @@ func TestStrategyRun(t *testing.T) {
 		initialPos  int
 		expectedPos int
 	}{
-		{act: indicator.ACT_HOLD, confidence: 1.0, initialPos: 5, expectedPos: 5},
-		{act: indicator.ACT_BUY, confidence: 0.4, initialPos: 5, expectedPos: 5},
-		{act: indicator.ACT_BUY, confidence: 0.6, initialPos: 5, expectedPos: 6},
-		{act: indicator.ACT_SELL, confidence: 0.4, initialPos: 5, expectedPos: 5},
-		{act: indicator.ACT_SELL, confidence: 0.6, initialPos: 5, expectedPos: 5},
-		{act: indicator.ACT_SELL, confidence: 0.6, initialPos: 5, expectedPos: 4, position: &market.Position{}},
+		{act: indicator.ActHold, confidence: 1.0, initialPos: 5, expectedPos: 5},
+		{act: indicator.ActBuy, confidence: 0.4, initialPos: 5, expectedPos: 5},
+		{act: indicator.ActBuy, confidence: 0.6, initialPos: 5, expectedPos: 6},
+		{act: indicator.ActSell, confidence: 0.4, initialPos: 5, expectedPos: 5},
+		{act: indicator.ActSell, confidence: 0.6, initialPos: 5, expectedPos: 5},
+		{act: indicator.ActSell, confidence: 0.6, initialPos: 5, expectedPos: 4, position: &market.Position{}},
 	}
 
 	for i, c := range tbl {

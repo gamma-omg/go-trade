@@ -87,7 +87,7 @@ func (b *barReader) Read(ctx context.Context) <-chan barReadResult {
 				return
 			}
 
-			close, err := decimal.NewFromString(data[4])
+			cloze, err := decimal.NewFromString(data[4])
 			if err != nil {
 				bars <- barReadResult{market.Bar{}, fmt.Errorf("failed to read close price: %w", err)}
 				return
@@ -102,7 +102,7 @@ func (b *barReader) Read(ctx context.Context) <-chan barReadResult {
 			bar := market.Bar{
 				Time:   time.Unix(int64(timestamp), 0),
 				Open:   open,
-				Close:  close,
+				Close:  cloze,
 				High:   high,
 				Low:    low,
 				Volume: volume,

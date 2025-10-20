@@ -12,7 +12,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-type jsonReportBuilder struct {
+type JsonReportBuilder struct {
 	log    *slog.Logger
 	report JsonReport
 	spent  decimal.Decimal
@@ -34,8 +34,8 @@ type JsonDeal struct {
 	GainPct  float64   `json:"gain_pct,omitempty"`
 }
 
-func NewJsonReportBuilder(log *slog.Logger) *jsonReportBuilder {
-	return &jsonReportBuilder{
+func NewJsonReportBuilder(log *slog.Logger) *JsonReportBuilder {
+	return &JsonReportBuilder{
 		log: log,
 		report: JsonReport{
 			Deals: map[string][]JsonDeal{},
@@ -43,7 +43,7 @@ func NewJsonReportBuilder(log *slog.Logger) *jsonReportBuilder {
 	}
 }
 
-func (r *jsonReportBuilder) SubmitDeal(d market.Deal) {
+func (r *JsonReportBuilder) SubmitDeal(d market.Deal) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -78,7 +78,7 @@ func (r *jsonReportBuilder) SubmitDeal(d market.Deal) {
 		slog.Time("sell_time", d.SellTime))
 }
 
-func (r *jsonReportBuilder) Write(w io.Writer) error {
+func (r *JsonReportBuilder) Write(w io.Writer) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

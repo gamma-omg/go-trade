@@ -148,7 +148,7 @@ func (a *TradingAgent) Run(ctx context.Context) error {
 
 func createBarsDump(path string) (*csvBarsDump, io.Closer, error) {
 	if path == "" {
-		return NewCsvBarsDump(io.Discard), nil, nil
+		return newCsvBarsDump(io.Discard), nil, nil
 	}
 
 	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
@@ -160,7 +160,7 @@ func createBarsDump(path string) (*csvBarsDump, io.Closer, error) {
 		return nil, nil, fmt.Errorf("failed to open bars dump file: %w", err)
 	}
 
-	return NewCsvBarsDump(f), f, nil
+	return newCsvBarsDump(f), f, nil
 }
 
 func createBarsAggregator(n int) barsAggregator {

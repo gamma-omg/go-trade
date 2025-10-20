@@ -34,7 +34,7 @@ func TestMACD_GetSignal(t *testing.T) {
 			sellThreshold: -0.3,
 			sellCap:       -0.7,
 			out: Signal{
-				Act:        ACT_HOLD,
+				Act:        ActHold,
 				Confidence: 1.0,
 			},
 		},
@@ -49,7 +49,7 @@ func TestMACD_GetSignal(t *testing.T) {
 			sellThreshold: -0.3,
 			sellCap:       -0.7,
 			out: Signal{
-				Act:        ACT_BUY,
+				Act:        ActBuy,
 				Confidence: 0.4608425925925947,
 			},
 		},
@@ -64,7 +64,7 @@ func TestMACD_GetSignal(t *testing.T) {
 			sellThreshold: -0.3,
 			sellCap:       -0.7,
 			out: Signal{
-				Act:        ACT_SELL,
+				Act:        ActSell,
 				Confidence: 0.7042627893139927,
 			},
 		},
@@ -79,7 +79,7 @@ func TestMACD_GetSignal(t *testing.T) {
 			sellThreshold: -0.3,
 			sellCap:       -0.7,
 			out: Signal{
-				Act:        ACT_BUY,
+				Act:        ActBuy,
 				Confidence: 1.0, // should NOT exceed +1
 			},
 		},
@@ -94,7 +94,7 @@ func TestMACD_GetSignal(t *testing.T) {
 			sellThreshold: -0.3,
 			sellCap:       -0.7,
 			out: Signal{
-				Act:        ACT_SELL,
+				Act:        ActSell,
 				Confidence: 1.0, // should NOT exceed +1
 			},
 		},
@@ -235,5 +235,5 @@ func TestMACD_holdWhenNotEnoughData(t *testing.T) {
 	s, err := ind.GetSignal()
 	require.NoError(t, err)
 
-	assert.Equal(t, Signal{ACT_HOLD, 1.0}, s)
+	assert.Equal(t, Signal{ActHold, 1.0}, s)
 }

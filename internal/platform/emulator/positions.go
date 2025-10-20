@@ -33,7 +33,7 @@ func newPositionManager(log *slog.Logger, comission comissionCharger, acc accoun
 	}
 }
 
-func (pm *positionManager) Open(ctx context.Context, asset *market.Asset, size decimal.Decimal) (p *market.Position, err error) {
+func (pm *positionManager) Open(_ context.Context, asset *market.Asset, size decimal.Decimal) (p *market.Position, err error) {
 	bar, err := asset.GetLastBar()
 	if err != nil {
 		err = fmt.Errorf("cannot find buy price for %s: %w", asset.Symbol, err)
@@ -58,7 +58,7 @@ func (pm *positionManager) Open(ctx context.Context, asset *market.Asset, size d
 	return p, nil
 }
 
-func (pm *positionManager) Close(ctx context.Context, p *market.Position) (d market.Deal, err error) {
+func (pm *positionManager) Close(_ context.Context, p *market.Position) (d market.Deal, err error) {
 	bar, err := p.Asset.GetLastBar()
 	if err != nil {
 		err = fmt.Errorf("cannot find sell price for %s: %w", p.Asset.Symbol, err)

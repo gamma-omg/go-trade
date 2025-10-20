@@ -28,7 +28,7 @@ func NewRSI(cfg config.RSI, bars barsProvider) *RSIIndictor {
 }
 
 func (i *RSIIndictor) GetSignal() (s Signal, err error) {
-	s = Signal{ACT_HOLD, 1.0}
+	s = Signal{ActHold, 1.0}
 
 	if !i.bars.HasBars(i.cfg.Period) {
 		return
@@ -52,10 +52,10 @@ func (i *RSIIndictor) GetSignal() (s Signal, err error) {
 
 	last := rsi[len(rsi)-1]
 	if last >= i.cfg.Overbought {
-		s = Signal{ACT_SELL, last}
+		s = Signal{ActSell, last}
 	}
 	if last <= 1-i.cfg.Overbought {
-		s = Signal{ACT_BUY, 1 - last}
+		s = Signal{ActBuy, 1 - last}
 	}
 
 	i.debug = rsiDebugData{
