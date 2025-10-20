@@ -93,7 +93,7 @@ func (a *Asset) GetLastBar() (Bar, error) {
 }
 
 func (a *Asset) HasBars(count int) bool {
-	return a.head%a.size >= count-1
+	return a.head >= count-1
 }
 
 func (a *Asset) Receive(bar Bar) {

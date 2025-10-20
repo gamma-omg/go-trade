@@ -164,14 +164,16 @@ func TestGetLastBar(t *testing.T) {
 func TestAssetHasBars(t *testing.T) {
 	tbl := []struct {
 		bars  []float64
+		head  int
 		count int
 		out   bool
 	}{
-		{bars: []float64{1, 2, 3, 4}, count: 2, out: true},
-		{bars: []float64{1, 2, 3, 4}, count: 0, out: true},
-		{bars: []float64{1, 2, 3, 4}, count: 4, out: true},
-		{bars: []float64{1, 2, 3, 4}, count: 5, out: false},
-		{bars: []float64{1, 2, 3, 4}, count: 10, out: false},
+		{bars: []float64{1, 2, 3, 4}, head: 3, count: 2, out: true},
+		{bars: []float64{1, 2, 3, 4}, head: 3, count: 0, out: true},
+		{bars: []float64{1, 2, 3, 4}, head: 3, count: 4, out: true},
+		{bars: []float64{1, 2, 3, 4}, head: 3, count: 5, out: false},
+		{bars: []float64{1, 2, 3, 4}, head: 3, count: 10, out: false},
+		{bars: []float64{1, 2, 3, 4}, head: 10, count: 10, out: true},
 	}
 
 	for i, c := range tbl {
@@ -184,7 +186,7 @@ func TestAssetHasBars(t *testing.T) {
 			a := &Asset{
 				Symbol: fmt.Sprintf("s%d", i),
 				bars:   in,
-				head:   len(in) - 1,
+				head:   c.head,
 				size:   len(in),
 			}
 
