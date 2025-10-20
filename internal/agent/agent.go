@@ -103,7 +103,9 @@ func (a *TradingAgent) Run(ctx context.Context) error {
 			}
 
 			agg := createBarsAggregator(cfg.AggregateBars)
-			prefetchBars(ctx, a.bars, agg, asset, cfg.Prefetch)
+			if err = prefetchBars(ctx, a.bars, agg, asset, cfg.Prefetch); err != nil {
+				return fmt.Errorf("failed to prefetch bars for symbol %s: %w", symbol, err)
+			}
 
 			bars, errs := a.bars.GetBars(ctx, symbol)
 			bars = agg.Aggregate(bars)
