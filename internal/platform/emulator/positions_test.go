@@ -93,5 +93,4 @@ func TestClose(t *testing.T) {
 	assert.Equal(t, ts.Add(1*time.Minute), d.SellTime)
 	assert.True(t, decimal.NewFromFloat(100).Equal(d.BuyPrice))
 	assert.True(t, decimal.NewFromFloat(120).Equal(d.SellPrice))
-	assert.True(t, decimal.NewFromFloat(40).Equal(d.Gain))
 }

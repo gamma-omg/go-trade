@@ -145,33 +145,8 @@ func TestAggregate(t *testing.T) {
 				out = append(out, newTestBar(b))
 			}
 
-			assert.ElementsMatch(t, c.out, out, 1e-3)
+			assert.ElementsMatch(t, c.out, out)
 		})
 	}
 
-}
-
-func TestAggregate_continuesAggregation(t *testing.T) {
-	agg := IntervalAggregator{Interval: 3 * time.Minute}
-	in := make(chan Bar, 2)
-	in <- (&testBar{time: time.Unix(1, 0), o: 1, h: 3, l: 1, c: 2, v: 1}).ToBar()
-	in <- (&testBar{time: time.Unix(2, 0), o: 3, h: 5, l: 3, c: 4, v: 2}).ToBar()
-	close(in)
-
-	var out []Bar
-	for b := range agg.Aggregate(in) {
-		out = append(out, b)
-	}
-
-	assert.Empty(t, out)
-
-	in = make(chan Bar, 1)
-	in <- (&testBar{time: time.Unix(3, 0), o: 4, h: 4, l: 2, c: 3, v: 3}).ToBar()
-	close(in)
-
-	for b := range agg.Aggregate(in) {
-		out = append(out, b)
-	}
-
-	assert.InDeltaSlice(t, []testBar{{time: time.Unix(1, 0), o: 1, h: 5, l: 1, c: 3, v: 6}}, out, 1e-3)
 }

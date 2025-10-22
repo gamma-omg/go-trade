@@ -15,14 +15,16 @@ import (
 func TestWrite(t *testing.T) {
 	r := NewJsonReportBuilder(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	r.SubmitDeal(market.Deal{
-		Symbol: "BTC",
-		Spend:  decimal.NewFromInt(100),
-		Gain:   decimal.NewFromInt(120),
+		Symbol:    "BTC",
+		Qty:       decimal.NewFromInt(10),
+		SellPrice: decimal.NewFromInt(12),
+		Spend:     decimal.NewFromInt(100),
 	})
 	r.SubmitDeal(market.Deal{
-		Symbol: "ETH",
-		Spend:  decimal.NewFromInt(1000),
-		Gain:   decimal.NewFromInt(1200),
+		Symbol:    "ETH",
+		Qty:       decimal.NewFromInt(10),
+		SellPrice: decimal.NewFromInt(120),
+		Spend:     decimal.NewFromInt(1000),
 	})
 
 	var buff bytes.Buffer
@@ -31,18 +33,18 @@ func TestWrite(t *testing.T) {
 
 	assert.JSONEq(t, `
 {
-	"total_gain": "1320",
-	"total_gain_pct": 1.2,
+	"total_gain": "220",
+	"total_gain_pct": 0.2,
 	"deals": {
 		"BTC": [{
 			"spend": "100",
-			"gain": "120",
-			"gain_pct": 1.2
+			"gain": "20",
+			"gain_pct": 0.2
 		}],
 		"ETH": [{
 			"spend": "1000",
-			"gain": "1200",
-			"gain_pct": 1.2
+			"gain": "200",
+			"gain_pct": 0.2
 		}]
 	}
 }`, buff.String())
@@ -61,9 +63,10 @@ func TestWrite_emptyReport(t *testing.T) {
 func TestSubmitDeal_divideByZero(t *testing.T) {
 	r := NewJsonReportBuilder(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	r.SubmitDeal(market.Deal{
-		Symbol: "BTC",
-		Gain:   decimal.NewFromInt(100),
-		Spend:  decimal.NewFromInt(0),
+		Symbol:    "BTC",
+		Qty:       decimal.NewFromInt(1),
+		SellPrice: decimal.NewFromInt(100),
+		Spend:     decimal.NewFromInt(0),
 	})
 
 	var buff bytes.Buffer

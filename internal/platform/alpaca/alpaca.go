@@ -15,32 +15,42 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-type AlpacaPlatform struct {
-	cfg    config.Alpaca
-	log    *slog.Logger
-	client *alpaca.Client
+type alpacaApiWrapper interface {
+	GetCryptoBars(symbol string, req marketdata.GetCryptoBarsRequest) ([]marketdata.CryptoBar, error)
+	GetCryptoBarsStream(ctx context.Context, symbol string) (<-chan stream.CryptoBar, <-chan error)
+	PlaceOrder(req alpaca.PlaceOrderRequest) (*alpaca.Order, error)
+	ClosePosition(symbol string, req alpaca.ClosePositionRequest) (*alpaca.Order, error)
+	GetOrder(orderID string) (*alpaca.Order, error)
+	GetAccount() (*alpaca.Account, error)
+	CloseAllPositions(req alpaca.CloseAllPositionsRequest) ([]alpaca.Order, error)
 }
 
-func NewAlpacaPlatform(log *slog.Logger, cfg config.Alpaca) (*AlpacaPlatform, error) {
-	c := alpaca.NewClient(alpaca.ClientOpts{
-		BaseURL:   cfg.BaseUrl,
-		APIKey:    cfg.ApiKey,
-		APISecret: cfg.Secret,
-	})
-	_, err := c.CloseAllPositions(alpaca.CloseAllPositionsRequest{CancelOrders: true})
+type AlpacaPlatform struct {
+	cfg config.Alpaca
+	log *slog.Logger
+	api alpacaApiWrapper
+}
+
+func newAlpacaPlatformWithApi(log *slog.Logger, cfg config.Alpaca, api alpacaApiWrapper) (*AlpacaPlatform, error) {
+	_, err := api.CloseAllPositions(alpaca.CloseAllPositionsRequest{CancelOrders: true})
 	if err != nil {
 		return nil, fmt.Errorf("failed to close active positions: %w", err)
 	}
 
 	return &AlpacaPlatform{
-		cfg:    cfg,
-		log:    log,
-		client: c,
+		cfg: cfg,
+		log: log,
+		api: api,
 	}, nil
 }
 
+func NewAlpacaPlatform(log *slog.Logger, cfg config.Alpaca) (*AlpacaPlatform, error) {
+	api := newAlpacaApi(cfg.ApiKey, cfg.Secret, cfg.BaseUrl)
+	return newAlpacaPlatformWithApi(log, cfg, api)
+}
+
 func (ap *AlpacaPlatform) Prefetch(symbol string, count int) (<-chan market.Bar, error) {
-	bars, err := marketdata.GetCryptoBars(symbol, marketdata.GetCryptoBarsRequest{
+	bars, err := ap.api.GetCryptoBars(symbol, marketdata.GetCryptoBarsRequest{
 		CryptoFeed: marketdata.US,
 		TimeFrame:  marketdata.NewTimeFrame(1, marketdata.Min),
 		Start:      time.Now().Add(time.Duration(-count-1) * time.Minute),
@@ -74,38 +84,19 @@ func (ap *AlpacaPlatform) Prefetch(symbol string, count int) (<-chan market.Bar,
 
 func (ap *AlpacaPlatform) GetBars(ctx context.Context, symbol string) (<-chan market.Bar, <-chan error) {
 	bars := make(chan market.Bar)
-	errs := make(chan error)
 
+	cBars, errs := ap.api.GetCryptoBarsStream(ctx, symbol)
 	go func() {
 		defer close(bars)
-		defer close(errs)
-
-		c := stream.NewCryptoClient(marketdata.US,
-			stream.WithCredentials(ap.cfg.ApiKey, ap.cfg.Secret),
-			stream.WithLogger(stream.DefaultLogger()),
-			stream.WithCryptoBars(func(cb stream.CryptoBar) {
-				b := market.Bar{
-					Time:   cb.Timestamp,
-					Open:   decimal.NewFromFloat(cb.Open),
-					Close:  decimal.NewFromFloat(cb.Close),
-					High:   decimal.NewFromFloat(cb.High),
-					Low:    decimal.NewFromFloat(cb.Low),
-					Volume: decimal.NewFromFloat(cb.Volume),
-				}
-
-				bars <- b
-			}, symbol))
-
-		if err := c.Connect(ctx); err != nil {
-			errs <- err
-			return
-		}
-
-		select {
-		case <-ctx.Done():
-			errs <- ctx.Err()
-		case err := <-c.Terminated():
-			errs <- err
+		for cb := range cBars {
+			bars <- market.Bar{
+				Time:   cb.Timestamp,
+				Open:   decimal.NewFromFloat(cb.Open),
+				Close:  decimal.NewFromFloat(cb.Close),
+				High:   decimal.NewFromFloat(cb.High),
+				Low:    decimal.NewFromFloat(cb.Low),
+				Volume: decimal.NewFromFloat(cb.Volume),
+			}
 		}
 	}()
 
@@ -122,7 +113,7 @@ func (ap *AlpacaPlatform) Open(ctx context.Context, asset *market.Asset, size de
 	qty := size.Div(bar.Close)
 	ap.log.Info("open alpaca position", slog.String("symbol", asset.Symbol), slog.String("qty", qty.String()), slog.String("size", size.String()))
 
-	ord, err := ap.client.PlaceOrder(alpaca.PlaceOrderRequest{
+	ord, err := ap.api.PlaceOrder(alpaca.PlaceOrderRequest{
 		Side:        alpaca.Buy,
 		Symbol:      asset.Symbol,
 		Qty:         &qty,
@@ -160,7 +151,7 @@ func (ap *AlpacaPlatform) Close(ctx context.Context, p *market.Position) (d mark
 	// for some reason in Alpaca we buy BTC/USD but sell BTCUSD symbol
 	sym := strings.Replace(p.Asset.Symbol, "/", "", -1)
 
-	ord, err := ap.client.ClosePosition(sym, r)
+	ord, err := ap.api.ClosePosition(sym, r)
 	if err != nil {
 		err = fmt.Errorf("failed to close position: %w", err)
 		return
@@ -175,8 +166,6 @@ func (ap *AlpacaPlatform) Close(ctx context.Context, p *market.Position) (d mark
 		return
 	}
 
-	before := p.Price
-	after := ord.FilledAvgPrice.Mul(ord.FilledQty)
 	d = market.Deal{
 		Symbol:    p.Asset.Symbol,
 		SellTime:  *ord.FilledAt,
@@ -185,14 +174,13 @@ func (ap *AlpacaPlatform) Close(ctx context.Context, p *market.Position) (d mark
 		BuyTime:   p.OpenTime,
 		BuyPrice:  p.EntryPrice,
 		Spend:     p.Price,
-		Gain:      after.Sub(before),
 	}
 
 	return
 }
 
 func (ap *AlpacaPlatform) GetBalance() (b decimal.Decimal, err error) {
-	acc, err := ap.client.GetAccount()
+	acc, err := ap.api.GetAccount()
 	if err != nil {
 		err = fmt.Errorf("failed to get alpaca account: %w", err)
 		return
@@ -211,7 +199,7 @@ func (ap *AlpacaPlatform) waitFillOrder(ctx context.Context, o *alpaca.Order) (*
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-ticker.C:
-			order, err := ap.client.GetOrder(o.ID)
+			order, err := ap.api.GetOrder(o.ID)
 			if err != nil {
 				return nil, fmt.Errorf("failed to update order state: %w", err)
 			}

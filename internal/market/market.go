@@ -25,7 +25,6 @@ type Deal struct {
 	SellPrice decimal.Decimal
 	Qty       decimal.Decimal
 	Spend     decimal.Decimal
-	Gain      decimal.Decimal
 }
 
 type Position struct {

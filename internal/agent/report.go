@@ -47,13 +47,14 @@ func (r *JsonReportBuilder) SubmitDeal(d market.Deal) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	gain := d.SellPrice.Mul(d.Qty).Sub(d.Spend)
 	dealPct := 0.0
 	if !d.Spend.IsZero() {
-		dealPct, _ = d.Gain.Div(d.Spend).Float64()
+		dealPct, _ = gain.Div(d.Spend).Float64()
 	}
 
 	r.spent = r.spent.Add(d.Spend)
-	r.gained = r.gained.Add(d.Gain)
+	r.gained = r.gained.Add(gain)
 
 	totalPct := 0.0
 	if !r.spent.IsZero() {
@@ -65,7 +66,7 @@ func (r *JsonReportBuilder) SubmitDeal(d market.Deal) {
 		BuyTime:  d.BuyTime,
 		SellTime: d.SellTime,
 		Spend:    d.Spend.String(),
-		Gain:     d.Gain.String(),
+		Gain:     gain.String(),
 		GainPct:  dealPct,
 	})
 	r.report.Deals[d.Symbol] = deals

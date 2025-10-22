@@ -65,7 +65,6 @@ func (pm *positionManager) Close(_ context.Context, p *market.Position) (d marke
 		return
 	}
 
-	before := p.Qty.Mul(p.EntryPrice)
 	after := pm.comission.ApplyOnSell(p.Qty.Mul(bar.Close))
 	if err = pm.acc.Deposit(after); err != nil {
 		err = fmt.Errorf("failed to deposit funds: %w", err)
@@ -80,7 +79,6 @@ func (pm *positionManager) Close(_ context.Context, p *market.Position) (d marke
 		BuyPrice:  p.EntryPrice,
 		Qty:       p.Qty,
 		Spend:     p.Price,
-		Gain:      after.Sub(before),
 	}
 	return
 }
