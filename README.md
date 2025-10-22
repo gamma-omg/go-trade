@@ -132,8 +132,8 @@ platform:
       BTC: data/btcusd_1-min_data.csv           # CSV file with historical bars
     start: 2025-01-01T11:45:26.000Z             # Simulation start time
     end: 2026-01-01T08:30:12.000Z               # Simulation end time
-    buy_comission: 0.002                        # Buy commission rate (0.2%)
-    sell_comission: 0.002                       # Sell commission rate (0.2%)
+    buy_commission: 0.002                        # Buy commission rate (0.2%)
+    sell_commission: 0.002                       # Sell commission rate (0.2%)
     balance: 10000                              # Starting account balance
 ```
 

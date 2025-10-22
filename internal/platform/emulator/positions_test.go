@@ -32,7 +32,7 @@ func TestOpen(t *testing.T) {
 
 	l := slog.New(slog.NewTextHandler(io.Discard, nil))
 	acc := defaultAccount{balance: decimal.NewFromInt(10000)}
-	pm := newPositionManager(l, &noComission{}, &acc)
+	pm := newPositionManager(l, &noCommission{}, &acc)
 
 	for i, c := range tbl {
 		t.Run(fmt.Sprintf("case_%d", i), func(t *testing.T) {
@@ -55,7 +55,7 @@ func TestOpen(t *testing.T) {
 func TestOpen_withdrawsMoney(t *testing.T) {
 	acc := defaultAccount{balance: decimal.NewFromInt(1000)}
 	l := slog.New(slog.NewTextHandler(io.Discard, nil))
-	pm := newPositionManager(l, &noComission{}, &acc)
+	pm := newPositionManager(l, &noCommission{}, &acc)
 
 	a := market.NewAssetWithBars("BTC", []market.Bar{{Close: decimal.NewFromInt(1000)}})
 	_, err := pm.Open(context.Background(), a, decimal.NewFromInt(100))
@@ -66,7 +66,7 @@ func TestOpen_withdrawsMoney(t *testing.T) {
 
 func TestOpen_failsWhenCalledTwice(t *testing.T) {
 	l := slog.New(slog.NewTextHandler(io.Discard, nil))
-	pm := newPositionManager(l, &noComission{}, &defaultAccount{balance: decimal.NewFromInt(10000)})
+	pm := newPositionManager(l, &noCommission{}, &defaultAccount{balance: decimal.NewFromInt(10000)})
 	a := market.NewAssetWithBars("BTC", []market.Bar{{Close: decimal.NewFromInt(100)}})
 
 	_, err := pm.Open(context.Background(), a, decimal.NewFromFloat(100))
@@ -76,7 +76,7 @@ func TestOpen_failsWhenCalledTwice(t *testing.T) {
 func TestClose(t *testing.T) {
 	ts := time.Now()
 	l := slog.New(slog.NewTextHandler(io.Discard, nil))
-	pm := newPositionManager(l, &noComission{}, &defaultAccount{balance: decimal.NewFromInt(100000)})
+	pm := newPositionManager(l, &noCommission{}, &defaultAccount{balance: decimal.NewFromInt(100000)})
 	a := market.NewAssetWithBars("BTC", []market.Bar{{Time: ts, Close: decimal.NewFromInt(100)}})
 	p, err := pm.Open(context.Background(), a, decimal.NewFromFloat(200))
 	require.NoError(t, err)

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFixedRateComission(t *testing.T) {
+func TestFixedRateCommission(t *testing.T) {
 	tbl := []struct {
 		buyFee     float64
 		sellFee    float64
@@ -23,7 +23,7 @@ func TestFixedRateComission(t *testing.T) {
 
 	for i, c := range tbl {
 		t.Run(fmt.Sprintf("case_%d", i), func(t *testing.T) {
-			comm := newFixedRateComission(c.buyFee, c.sellFee)
+			comm := newFixedRateCommission(c.buyFee, c.sellFee)
 			buy := comm.ApplyOnBuy(decimal.NewFromFloat(c.buyBefore))
 			sell := comm.ApplyOnSell(decimal.NewFromFloat(c.sellBefore))
 			assert.True(t, decimal.NewFromFloat(c.buyAfter).Equal(buy))
@@ -32,8 +32,8 @@ func TestFixedRateComission(t *testing.T) {
 	}
 }
 
-func TestNoComission(t *testing.T) {
-	comm := noComission{}
+func TestNoCommission(t *testing.T) {
+	comm := noCommission{}
 	buy := decimal.NewFromFloat(1234)
 	sell := decimal.NewFromFloat(4321)
 	assert.True(t, buy.Equal(comm.ApplyOnBuy(buy)))

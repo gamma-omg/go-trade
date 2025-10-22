@@ -18,13 +18,13 @@ type TradingEmulator struct {
 }
 
 func NewTradingEmulator(log *slog.Logger, cfg config.Emulator) (*TradingEmulator, error) {
-	comission := newFixedRateComission(cfg.BuyComission, cfg.SellComission)
+	commission := newFixedRateCommission(cfg.BuyCommission, cfg.SellCommission)
 	acc := &defaultAccount{balance: decimal.NewFromInt(int64(cfg.Balance))}
 
 	emu := &TradingEmulator{
 		cfg:    cfg,
 		Acc:    acc,
-		PosMan: *newPositionManager(log, comission, acc),
+		PosMan: *newPositionManager(log, commission, acc),
 	}
 
 	return emu, nil

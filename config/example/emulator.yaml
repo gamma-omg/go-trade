@@ -36,6 +36,6 @@ platform:
       BTC: data/btcusd_1-min_data.csv
     start: 2025-01-01T11:45:26.000Z
     end: 2026-01-01T08:30:12.000Z
-    buy_comission: 0.002
-    sell_comission: 0.002
+    buy_commission: 0.002
+    sell_commission: 0.002
     balance: 10000

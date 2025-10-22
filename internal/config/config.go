@@ -136,12 +136,12 @@ func (w *IndicatorReference) UnmarshalYAML(value *yaml.Node) error {
 // platform configs
 
 type Emulator struct {
-	Data          map[string]string `yaml:"data"`
-	Start         time.Time         `yaml:"start"`
-	End           time.Time         `yaml:"end"`
-	BuyComission  float64           `yaml:"buy_comission"`
-	SellComission float64           `yaml:"sell_comission"`
-	Balance       float64           `yaml:"balance"`
+	Data           map[string]string `yaml:"data"`
+	Start          time.Time         `yaml:"start"`
+	End            time.Time         `yaml:"end"`
+	BuyCommission  float64           `yaml:"buy_commission"`
+	SellCommission float64           `yaml:"sell_commission"`
+	Balance        float64           `yaml:"balance"`
 }
 
 type Alpaca struct {

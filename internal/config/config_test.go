@@ -63,8 +63,8 @@ platform:
       ETH: /var/data/eth.txt
     start: 2014-09-12T11:45:26.000Z
     end: 2020-12-31T08:30:12.000Z
-    buy_comission: 0.002
-    sell_comission: 0.0015
+    buy_commission: 0.002
+    sell_commission: 0.0015
 `))
 
 	require.NoError(t, err)
@@ -81,8 +81,8 @@ platform:
 	assert.Equal(t, "/var/data/eth.txt", emu.Data["ETH"])
 	assert.Equal(t, start, emu.Start)
 	assert.Equal(t, end, emu.End)
-	assert.Equal(t, 0.002, emu.BuyComission)
-	assert.Equal(t, 0.0015, emu.SellComission)
+	assert.Equal(t, 0.002, emu.BuyCommission)
+	assert.Equal(t, 0.0015, emu.SellCommission)
 }
 
 func TestRead_Ensemble(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-type comissionCharger interface {
+type commissionCharger interface {
 	ApplyOnBuy(decimal.Decimal) decimal.Decimal
 	ApplyOnSell(decimal.Decimal) decimal.Decimal
 }
@@ -20,16 +20,16 @@ type account interface {
 }
 
 type positionManager struct {
-	log       *slog.Logger
-	comission comissionCharger
-	acc       account
+	log        *slog.Logger
+	commission commissionCharger
+	acc        account
 }
 
-func newPositionManager(log *slog.Logger, comission comissionCharger, acc account) *positionManager {
+func newPositionManager(log *slog.Logger, commission commissionCharger, acc account) *positionManager {
 	return &positionManager{
-		log:       log,
-		comission: comission,
-		acc:       acc,
+		log:        log,
+		commission: commission,
+		acc:        acc,
 	}
 }
 
@@ -46,7 +46,7 @@ func (pm *positionManager) Open(_ context.Context, asset *market.Asset, size dec
 	}
 
 	price := size
-	size = pm.comission.ApplyOnBuy(size)
+	size = pm.commission.ApplyOnBuy(size)
 	p = &market.Position{
 		Asset:      asset,
 		EntryPrice: bar.Close,
@@ -65,7 +65,7 @@ func (pm *positionManager) Close(_ context.Context, p *market.Position) (d marke
 		return
 	}
 
-	after := pm.comission.ApplyOnSell(p.Qty.Mul(bar.Close))
+	after := pm.commission.ApplyOnSell(p.Qty.Mul(bar.Close))
 	if err = pm.acc.Deposit(after); err != nil {
 		err = fmt.Errorf("failed to deposit funds: %w", err)
 		return
