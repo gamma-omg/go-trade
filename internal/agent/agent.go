@@ -20,10 +20,6 @@ type barsSource interface {
 	GetBars(ctx context.Context, symbol string) (<-chan market.Bar, <-chan error)
 }
 
-type barsAggregator interface {
-	Aggregate(bars <-chan market.Bar) <-chan market.Bar
-}
-
 type tradingPlatform interface {
 	barsSource
 	positionManager
@@ -108,7 +104,7 @@ func (a *TradingAgent) Run(ctx context.Context) error {
 			}
 
 			bars, errs := a.bars.GetBars(ctx, symbol)
-			bars = agg.Aggregate(bars)
+			bars = agg(bars)
 
 			for {
 				select {
@@ -165,18 +161,15 @@ func createBarsDump(path string) (*csvBarsDump, io.Closer, error) {
 	return newCsvBarsDump(f), f, nil
 }
 
-func createBarsAggregator(n int) barsAggregator {
+func createBarsAggregator(n int) market.BarAggregator {
 	if n > 1 {
-		return &market.IntervalAggregator{
-			BarDuration: 1 * time.Minute,
-			Interval:    time.Duration(n) * time.Minute,
-		}
+		return market.IntervalAggregator(1*time.Minute, time.Duration(n)*time.Minute)
 	}
 
-	return &market.IdentityAggregator{}
+	return market.IndentityAggregator()
 }
 
-func prefetchBars(ctx context.Context, bars barsSource, agg barsAggregator, asset *market.Asset, n int) error {
+func prefetchBars(ctx context.Context, bars barsSource, agg market.BarAggregator, asset *market.Asset, n int) error {
 	if n < 1 {
 		return nil
 	}
@@ -186,7 +179,7 @@ func prefetchBars(ctx context.Context, bars barsSource, agg barsAggregator, asse
 		return fmt.Errorf("failed to prefetch last %d bars for symbol %s: %w", n, asset.Symbol, err)
 	}
 
-	for b := range agg.Aggregate(barsCh) {
+	for b := range agg(barsCh) {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()

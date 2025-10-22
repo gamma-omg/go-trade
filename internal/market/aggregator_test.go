@@ -129,10 +129,7 @@ func TestAggregate(t *testing.T) {
 
 	for i, c := range tbl {
 		t.Run(fmt.Sprintf("case_%d", i), func(t *testing.T) {
-			a := IntervalAggregator{
-				BarDuration: 1 * time.Second,
-				Interval:    c.interval,
-			}
+			agg := IntervalAggregator(1*time.Second, c.interval)
 			in := make(chan Bar, len(c.in))
 
 			for _, b := range c.in {
@@ -141,7 +138,7 @@ func TestAggregate(t *testing.T) {
 			close(in)
 
 			var out []testBar
-			for b := range a.Aggregate(in) {
+			for b := range agg(in) {
 				out = append(out, newTestBar(b))
 			}
 

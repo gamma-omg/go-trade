@@ -6,57 +6,55 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-type IdentityAggregator struct {
+type BarAggregator func(bars <-chan Bar) <-chan Bar
+
+func IndentityAggregator() BarAggregator {
+	return func(bars <-chan Bar) <-chan Bar {
+		return bars
+	}
 }
 
-func (a *IdentityAggregator) Aggregate(bars <-chan Bar) <-chan Bar {
-	return bars
-}
+func IntervalAggregator(barDuration, interval time.Duration) BarAggregator {
+	return func(bars <-chan Bar) <-chan Bar {
+		out := make(chan Bar)
+		go func() {
+			defer close(out)
 
-type IntervalAggregator struct {
-	BarDuration time.Duration
-	Interval    time.Duration
-}
+			var cur *Bar
+			var end time.Time
+			for b := range bars {
+				if cur != nil && !b.Time.Before(end) {
+					out <- *cur
+					cur = nil
+				}
 
-func (a *IntervalAggregator) Aggregate(bars <-chan Bar) <-chan Bar {
-	res := make(chan Bar)
-	go func() {
-		defer close(res)
+				if cur == nil {
+					end = b.Time.Truncate(interval).Add(interval)
+					cur = &Bar{
+						Time: b.Time,
+						Open: b.Open,
+						High: b.High,
+						Low:  b.Low,
+					}
+				}
 
-		var cur *Bar
-		var end time.Time
-		for b := range bars {
-			if cur != nil && !b.Time.Before(end) {
-				res <- *cur
-				cur = nil
-			}
+				cur.Close = b.Close
+				cur.High = decimal.Max(cur.High, b.High)
+				cur.Low = decimal.Min(cur.Low, b.Low)
+				cur.Volume = cur.Volume.Add(b.Volume)
 
-			if cur == nil {
-				end = b.Time.Truncate(a.Interval).Add(a.Interval)
-				cur = &Bar{
-					Time: b.Time,
-					Open: b.Open,
-					High: b.High,
-					Low:  b.Low,
+				bEnd := b.Time.Add(barDuration)
+				if !bEnd.Before(end) {
+					out <- *cur
+					cur = nil
 				}
 			}
 
-			cur.Close = b.Close
-			cur.High = decimal.Max(cur.High, b.High)
-			cur.Low = decimal.Min(cur.Low, b.Low)
-			cur.Volume = cur.Volume.Add(b.Volume)
-
-			bEnd := b.Time.Add(a.BarDuration)
-			if !bEnd.Before(end) {
-				res <- *cur
-				cur = nil
+			if cur != nil {
+				out <- *cur
 			}
-		}
+		}()
 
-		if cur != nil {
-			res <- *cur
-		}
-	}()
-
-	return res
+		return out
+	}
 }
