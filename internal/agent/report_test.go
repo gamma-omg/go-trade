@@ -2,7 +2,6 @@ package agent
 
 import (
 	"bytes"
-	"io"
 	"log/slog"
 	"testing"
 
@@ -13,7 +12,7 @@ import (
 )
 
 func TestWrite(t *testing.T) {
-	r := NewJsonReportBuilder(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	r := NewJsonReportBuilder(slog.New(slog.DiscardHandler))
 	r.SubmitDeal(market.Deal{
 		Symbol:    "BTC",
 		Qty:       decimal.NewFromInt(10),
@@ -51,7 +50,7 @@ func TestWrite(t *testing.T) {
 }
 
 func TestWrite_emptyReport(t *testing.T) {
-	r := NewJsonReportBuilder(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	r := NewJsonReportBuilder(slog.New(slog.DiscardHandler))
 
 	var buff bytes.Buffer
 	err := r.Write(&buff)
@@ -61,7 +60,7 @@ func TestWrite_emptyReport(t *testing.T) {
 }
 
 func TestSubmitDeal_divideByZero(t *testing.T) {
-	r := NewJsonReportBuilder(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	r := NewJsonReportBuilder(slog.New(slog.DiscardHandler))
 	r.SubmitDeal(market.Deal{
 		Symbol:    "BTC",
 		Qty:       decimal.NewFromInt(1),

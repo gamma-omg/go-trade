@@ -3,7 +3,6 @@ package agent
 import (
 	"context"
 	"errors"
-	"io"
 	"log/slog"
 	"testing"
 	"time"
@@ -118,7 +117,7 @@ func TestAgentRun(t *testing.T) {
 	}
 	str := mockTradingStrategy{}
 	a := TradingAgent{
-		log:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		log:  slog.New(slog.DiscardHandler),
 		bars: &src,
 		strategyFactory: func(cfg config.Strategy, asset *market.Asset) (tradingStrategy, error) {
 			return &str, nil

@@ -3,7 +3,6 @@ package emulator
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"testing"
 	"time"
@@ -30,7 +29,7 @@ func TestOpen(t *testing.T) {
 		{symbol: "C4", time: time.Now(), price: 1000, size: 200, qty: 0.2},
 	}
 
-	l := slog.New(slog.NewTextHandler(io.Discard, nil))
+	l := slog.New(slog.DiscardHandler)
 	acc := defaultAccount{balance: decimal.NewFromInt(10000)}
 	pm := newPositionManager(l, &noCommission{}, &acc)
 
@@ -54,7 +53,7 @@ func TestOpen(t *testing.T) {
 
 func TestOpen_withdrawsMoney(t *testing.T) {
 	acc := defaultAccount{balance: decimal.NewFromInt(1000)}
-	l := slog.New(slog.NewTextHandler(io.Discard, nil))
+	l := slog.New(slog.DiscardHandler)
 	pm := newPositionManager(l, &noCommission{}, &acc)
 
 	a := market.NewAssetWithBars("BTC", []market.Bar{{Close: decimal.NewFromInt(1000)}})
@@ -65,7 +64,7 @@ func TestOpen_withdrawsMoney(t *testing.T) {
 }
 
 func TestOpen_failsWhenCalledTwice(t *testing.T) {
-	l := slog.New(slog.NewTextHandler(io.Discard, nil))
+	l := slog.New(slog.DiscardHandler)
 	pm := newPositionManager(l, &noCommission{}, &defaultAccount{balance: decimal.NewFromInt(10000)})
 	a := market.NewAssetWithBars("BTC", []market.Bar{{Close: decimal.NewFromInt(100)}})
 
@@ -75,7 +74,7 @@ func TestOpen_failsWhenCalledTwice(t *testing.T) {
 
 func TestClose(t *testing.T) {
 	ts := time.Now()
-	l := slog.New(slog.NewTextHandler(io.Discard, nil))
+	l := slog.New(slog.DiscardHandler)
 	pm := newPositionManager(l, &noCommission{}, &defaultAccount{balance: decimal.NewFromInt(100000)})
 	a := market.NewAssetWithBars("BTC", []market.Bar{{Time: ts, Close: decimal.NewFromInt(100)}})
 	p, err := pm.Open(context.Background(), a, decimal.NewFromFloat(200))
