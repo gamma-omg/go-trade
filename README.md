@@ -1,4 +1,4 @@
-# Trading Bot
+# Go Trade
 
 A configurable and extensible trading agent framework written in Go that supports multiple trading platforms and technical indicators. The bot can execute automated trading strategies based on configurable signal thresholds and indicator combinations.
 
